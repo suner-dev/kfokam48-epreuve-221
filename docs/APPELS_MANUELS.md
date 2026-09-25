@@ -46,12 +46,12 @@ docker compose down -v && docker compose up -d --build
 | 3 | Marquer sa présence | `POST /api/presences` | `201` |
 | 4 | Doublon de présence | `POST /api/presences` (bis) | `409 DEJA_PRESENT` |
 | 5 | Détail des présences | `GET /api/sessions/{id}/presences` | `200` |
-| 6 | Dépôt d'un exercice | `POST /api/exercices` | `201` (`EN_ATTENTE_DE_RELECTURE`) |
-| 7 | Détail des exercices / affectation | `GET /api/sessions/{id}/exercices` | `200` (`relecteurId=2`) |
+| 6 | Dépôt d'un exercice, puis **deux** affectations | `POST /api/exercices` | `201` (`EN_ATTENTE_DE_RELECTURE`) |
+| 7 | Détail des exercices et de **chacune** de leurs affectations | `GET /api/sessions/{id}/exercices` | `200` (`relecteurs` en tableau, `noteRetenue`, `provisoire`) |
 | 8 | Relectures à faire (sans identité d'auteur) | `GET /api/relectures/a-faire?etudiantId=2` | `200` |
 | 9 | Démarrer une relecture | `POST /api/relectures/{id}/debut` | `200` |
 | 10 | Rendu de la note, puis second rendu refusé | `POST /api/relectures/{id}` | `200`, puis `409 RELECTURE_DEJA_RENDUE` |
-| 11 | Résultats reçus (anonymat du relecteur) | `GET /api/etudiants/1/relectures-recues` | `200` (aucun `relecteurId`, aucun nom) |
+| 11 | Note retenue, provisoire, sans identité des relecteurs | `GET /api/etudiants/1/relectures-recues` | `200` (`note`, `nbNotes`, `provisoire` ; aucun `relecteurId`, aucun nom) |
 | 12 | Tableau par promotion | `GET /api/tableau?promotionId=1` | `200` |
 | 13 | Moyenne fournie par l'API, non recalculée | (lecture de la ligne `etudiantId=1`) | `moyenne=16.0` |
 | 14 | Terminer la session | `POST /api/sessions/{id}/fin` | `200` |
@@ -62,14 +62,28 @@ docker compose down -v && docker compose up -d --build
 Les deux opérations `PUT` (EF9/EF10) sont des **Should** livrées après le jalon `[JALON] v0.1`
 (issue #14 close, PR #51) ; elles sont signalées comme telles dans le `README` et exercées ici.
 
+## Ce que le changement de l'enveloppe a modifié dans les réponses
+
+Deux réponses ne sont plus les mêmes qu'en v0.1, et le relevé ci-dessous le montre tel quel :
+
+| Opération | Avant | Après |
+|---|---|---|
+| `GET /api/etudiants/{id}/relectures-recues` | une entrée **par affectation**, `note` entière | une entrée **par exercice**, `note` = moyenne des notes rendues, plus `nbNotes` et `provisoire` |
+| `GET /api/sessions/{id}/exercices` | `relecteurId` unique | un tableau `relecteurs`, plus `noteRetenue` et `provisoire` |
+
+L'anonymat ne s'est pas relâché : `relectures-recues` ne renvoie **aucun** identifiant de
+relecteur, pour aucun des deux pairs. Seul le formateur, seul acteur autorisé (Q8), voit le
+tableau `relecteurs`.
+
 ## Relevé brut (sortie de `bash docs/appels-manuels.sh`)
 
+Rejoué sur l'application démarrée par `docker compose up -d --build`, sur PostgreSQL 16, après le changement de besoin de l'enveloppe (deux pairs par exercice). Ce relevé remplace celui de la v0.1 : **deux réponses ont changé de forme** et les voici telles que l'API les renvoie réellement.
 
 ```text
 # Rejeu des appels manuels du contrat — consigne 14.5
 # API      : http://localhost:8080
-# Date     : 2026-09-25T16:59:32Z
-# Commit   : c91ecddcda44b6d68cbfa99d6812647b4d742b67
+# Date     : 2026-09-25T18:03:18Z
+# Commit   : 790300d83679c78aad045f5cfdfa5c3e4950b576
 
 ### 1a. Lister les promotions
 $ curl -s -X GET 'http://localhost:8080/api/promotions'
@@ -86,25 +100,25 @@ $ curl -s -X GET 'http://localhost:8080/api/etudiants?promotionId=1'
 ### 2. Ouvrir une session
 $ curl -s -X POST 'http://localhost:8080/api/sessions' -H 'Content-Type: application/json' -d '{"titre":"Session Appels Manuels","promotionId":1}'
 < HTTP 201
-< {"id":3,"code":"VKQWPELD","ouvertureAt":"2026-09-25T16:59:32.094223473Z","expirationAt":"2026-09-25T17:14:32.094223473Z"}
+< {"id":3,"code":"EKLHPLC9","ouvertureAt":"2026-09-25T18:03:18.194781108Z","expirationAt":"2026-09-25T18:18:18.194781108Z"}
 
 ### 3. Marquer la presence de l'etudiant 1
-$ curl -s -X POST 'http://localhost:8080/api/presences' -H 'Content-Type: application/json' -d '{"code":"VKQWPELD","etudiantId":1}'
+$ curl -s -X POST 'http://localhost:8080/api/presences' -H 'Content-Type: application/json' -d '{"code":"EKLHPLC9","etudiantId":1}'
 < HTTP 201
 < {"id":61,"sessionId":3,"etudiantId":1,"source":"ETUDIANT"}
 
 ### 4.presence en double (attendu 409 DEJA_PRESENT)
-$ curl -s -X POST 'http://localhost:8080/api/presences' -H 'Content-Type: application/json' -d '{"code":"VKQWPELD","etudiantId":1}'
+$ curl -s -X POST 'http://localhost:8080/api/presences' -H 'Content-Type: application/json' -d '{"code":"EKLHPLC9","etudiantId":1}'
 < HTTP 409
 < {"code":"DEJA_PRESENT","message":"La présence est déjà enregistrée pour cette session."}
 
 ### 5. Detail des presences de la session
 $ curl -s -X GET 'http://localhost:8080/api/sessions/3/presences'
 < HTTP 200
-< [{"etudiantId":4,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":13,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":14,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":15,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":16,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":17,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":18,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":19,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":20,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":21,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":22,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":5,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":23,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":24,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":25,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":26,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":27,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":28,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":29,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":30,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":31,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":32,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":6,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":33,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":34,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":35,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":36,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":37,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":38,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":39,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":40,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":41,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":42,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":7,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":43,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":44,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":45,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":46,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":47,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":48,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":49,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":50,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":51,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":52,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":8,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":53,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":54,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":55,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":56,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":57,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":58,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":59,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":60,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":9,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":10,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":11,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":12,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":1,"nom":"Dupont","present":true,"source":"ETUDIANT","marqueeAt":"2026-09-25T16:59:32.265570Z"},{"etudiantId":2,"nom":"Martin","present":false,"source":null,"marqueeAt":null},{"etudiantId":3,"nom":"Nkoa","present":false,"source":null,"marqueeAt":null}]
+< [{"etudiantId":4,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":13,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":14,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":15,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":16,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":17,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":18,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":19,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":20,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":21,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":22,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":5,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":23,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":24,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":25,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":26,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":27,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":28,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":29,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":30,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":31,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":32,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":6,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":33,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":34,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":35,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":36,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":37,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":38,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":39,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":40,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":41,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":42,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":7,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":43,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":44,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":45,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":46,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":47,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":48,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":49,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":50,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":51,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":52,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":8,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":53,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":54,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":55,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":56,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":57,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":58,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":59,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":60,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":9,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":10,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":11,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":12,"nom":"Demo","present":false,"source":null,"marqueeAt":null},{"etudiantId":1,"nom":"Dupont","present":true,"source":"ETUDIANT","marqueeAt":"2026-09-25T18:03:18.297518Z"},{"etudiantId":2,"nom":"Martin","present":false,"source":null,"marqueeAt":null},{"etudiantId":3,"nom":"Nkoa","present":false,"source":null,"marqueeAt":null}]
 
 ### 6a. Presence de l'etudiant 2 (pour l'appairage)
-$ curl -s -X POST 'http://localhost:8080/api/presences' -H 'Content-Type: application/json' -d '{"code":"VKQWPELD","etudiantId":2}'
+$ curl -s -X POST 'http://localhost:8080/api/presences' -H 'Content-Type: application/json' -d '{"code":"EKLHPLC9","etudiantId":2}'
 < HTTP 201
 < {"id":62,"sessionId":3,"etudiantId":2,"source":"ETUDIANT"}
 
@@ -116,7 +130,7 @@ $ curl -s -X POST 'http://localhost:8080/api/exercices' -H 'Content-Type: applic
 ### 7. Detail des exercices de la session
 $ curl -s -X GET 'http://localhost:8080/api/sessions/3/exercices'
 < HTTP 200
-< [{"id":5,"etudiantId":1,"statut":"EN_ATTENTE_DE_RELECTURE","relecteurId":2,"relectureId":5,"commenceeAt":null,"rendueAt":null}]
+< [{"id":5,"etudiantId":1,"statut":"EN_ATTENTE_DE_RELECTURE","relecteurs":[{"relectureId":5,"relecteurId":2,"commenceeAt":null,"rendueAt":null}],"relecteurId":2,"relectureId":5,"commenceeAt":null,"rendueAt":null,"noteRetenue":null,"provisoire":true}]
 
 ### 8. Relectures a faire pour l'etudiant 2
 $ curl -s -X GET 'http://localhost:8080/api/relectures/a-faire?etudiantId=2'
@@ -131,7 +145,7 @@ $ curl -s -X PUT 'http://localhost:8080/api/exercices/5' -H 'Content-Type: appli
 ### 9b. Demarrer la relecture
 $ curl -s -X POST 'http://localhost:8080/api/relectures/5/debut' -H 'Content-Type: application/json' -d '{}'
 < HTTP 200
-< {"id":5,"commenceeAt":"2026-09-25T16:59:33.717008055Z"}
+< {"id":5,"commenceeAt":"2026-09-25T18:03:19.036231114Z"}
 
 ### 9c. EF9 verrou — remplacement apres debut (attendu 409 RELECTURE_COMMENCEE)
 $ curl -s -X PUT 'http://localhost:8080/api/exercices/5' -H 'Content-Type: application/json' -d '{"lien":"https://example.test/manuels/ex1-v3"}'
@@ -141,7 +155,7 @@ $ curl -s -X PUT 'http://localhost:8080/api/exercices/5' -H 'Content-Type: appli
 ### 10a. Rendu de la note (15)
 $ curl -s -X POST 'http://localhost:8080/api/relectures/5' -H 'Content-Type: application/json' -d '{"note":15,"commentaire":"Bon travail."}'
 < HTTP 200
-< {"id":5,"note":15,"commentaire":"Bon travail.","rendueAt":"2026-09-25T16:59:34.021645242Z"}
+< {"id":5,"note":15,"commentaire":"Bon travail.","rendueAt":"2026-09-25T18:03:19.122900337Z"}
 
 ### 10b. Second rendu (attendu 409 RELECTURE_DEJA_RENDUE)
 $ curl -s -X POST 'http://localhost:8080/api/relectures/5' -H 'Content-Type: application/json' -d '{"note":12,"commentaire":"Encore."}'
@@ -151,12 +165,12 @@ $ curl -s -X POST 'http://localhost:8080/api/relectures/5' -H 'Content-Type: app
 ### 10c. EF10 — Correction de la note avant cloture (200 attendu)
 $ curl -s -X PUT 'http://localhost:8080/api/relectures/5' -H 'Content-Type: application/json' -d '{"note":17,"commentaire":"Apres relecture attentive."}'
 < HTTP 200
-< {"id":5,"note":17,"commentaire":"Apres relecture attentive.","rendueAt":"2026-09-25T16:59:34.288130442Z"}
+< {"id":5,"note":17,"commentaire":"Apres relecture attentive.","rendueAt":"2026-09-25T18:03:19.237308703Z"}
 
 ### 11. Resultats recus par l'etudiant 1 (anonymat du relecteur)
 $ curl -s -X GET 'http://localhost:8080/api/etudiants/1/relectures-recues'
 < HTTP 200
-< [{"exerciceId":5,"sessionId":3,"lienExercice":"https://example.test/manuels/ex1-v2","note":17,"commentaire":"Apres relecture attentive."},{"exerciceId":2,"sessionId":2,"lienExercice":"https://example.test/exercices/demo-relu","note":15,"commentaire":"Relecture relue de démonstration"}]
+< [{"exerciceId":5,"sessionId":3,"lienExercice":"https://example.test/manuels/ex1-v2","note":17.0,"commentaire":"Apres relecture attentive.","nbNotes":1,"provisoire":true},{"exerciceId":2,"sessionId":2,"lienExercice":"https://example.test/exercices/demo-relu","note":15.0,"commentaire":"Relecture relue de démonstration","nbNotes":1,"provisoire":true}]
 
 ### 12. Tableau de la promotion 1
 $ curl -s -X GET 'http://localhost:8080/api/tableau?promotionId=1'
@@ -169,17 +183,17 @@ $ curl -s -X GET 'http://localhost:8080/api/tableau?promotionId=1'
 ### 14. Terminer la session
 $ curl -s -X POST 'http://localhost:8080/api/sessions/3/fin' -H 'Content-Type: application/json' -d '{}'
 < HTTP 200
-< {"id":3,"finAt":"2026-09-25T16:59:34.632634776Z"}
+< {"id":3,"finAt":"2026-09-25T18:03:19.475414890Z"}
 
 ### 15. Cloturer la session
 $ curl -s -X POST 'http://localhost:8080/api/sessions/3/cloture' -H 'Content-Type: application/json' -d '{}'
 < HTTP 200
-< {"id":3,"finAt":"2026-09-25T16:59:34.632635Z","clotureAt":"2026-09-25T16:59:35.177599201Z"}
+< {"id":3,"finAt":"2026-09-25T18:03:19.475415Z","clotureAt":"2026-09-25T18:03:19.566948816Z"}
 
 ### 16. Presence apres cloture (attendu 410 SESSION_CLOTUREE)
-$ curl -s -X POST 'http://localhost:8080/api/presences' -H 'Content-Type: application/json' -d '{"code":"VKQWPELD","etudiantId":3}'
+$ curl -s -X POST 'http://localhost:8080/api/presences' -H 'Content-Type: application/json' -d '{"code":"EKLHPLC9","etudiantId":3}'
 < HTTP 410
 < {"code":"SESSION_CLOTUREE","message":"La session est clôturée."}
 
-### Rejeu termine. Session id=3 code=VKQWPELD exercice=5 relecture=5.
+### Rejeu termine. Session id=3 code=EKLHPLC9 exercice=5 relecture=5.
 ```
