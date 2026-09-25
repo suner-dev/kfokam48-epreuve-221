@@ -6,9 +6,9 @@ info:
     Les cinq opérations de la section « IMPOSÉ » doivent exister EXACTEMENT ainsi :
     mêmes chemins, mêmes verbes, mêmes codes de statut, même format d'erreur.
     La section « LIBRE » (ajoutée par le candidat, sous /api) complète l'API pour
-    couvrir les besoins non adressés par les 5 opérations imposées — notamment la
-    CLÔTURE de session (trou H1 du cahier), l'ajout de présence par le formateur (Q14),
-    la correction de relecture avant clôture (Q10) et le remplacement de lien (Q13).
+    couvrir les besoins non adressés par les 5 opérations imposées : fin et clôture
+    de session, ajout manuel de présence, démarrage et correction d'une relecture,
+    remplacement du lien, consultation des résultats et détails de tableau.
     Figé AVANT le premier commit de code (exigence « contrat complété et figé »).
     Auteur : Ngansop Sumo Rainer · 221.
 servers:
@@ -76,11 +76,11 @@ paths:
                   source: { type: string, enum: [ETUDIANT, FORMATEUR] }
         "400": { $ref: "#/components/responses/Erreur" }   # CODE_INCONNU
         "409": { $ref: "#/components/responses/Erreur" }   # DEJA_PRESENT
-        "410": { $ref: "#/components/responses/Erreur" }   # CODE_EXPIRE
+        "410": { $ref: "#/components/responses/Erreur" }   # CODE_EXPIRE / SESSION_TERMINEE / SESSION_CLOTUREE
 
   /api/exercices:
     post:
-      summary: Un étudiant dépose le lien de son exercice
+      summary: L'étudiant dépose le lien de son exercice
       tags: [Exercices]
       requestBody:
         required: true
@@ -106,6 +106,7 @@ paths:
                   statut: { type: string }
         "400": { $ref: "#/components/responses/Erreur" }   # LIEN_INVALIDE
         "409": { $ref: "#/components/responses/Erreur" }   # EXERCICE_DEJA_DEPOSE
+        "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
 
   /api/relectures/{id}:
     post:
@@ -130,7 +131,9 @@ paths:
         "200": { description: Relecture enregistrée }
         "400": { $ref: "#/components/responses/Erreur" }   # NOTE_INVALIDE
         "403": { $ref: "#/components/responses/Erreur" }   # AUTO_RELECTURE
+        "404": { $ref: "#/components/responses/Erreur" }   # RELECTURE_INCONNUE
         "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_RENDUE
+        "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
     put:
       summary: "Q10 / RG9 — Correction d'une relecture tant que la session n'est pas clôturée (honore Q10 sans toucher au POST imposé)"
       tags: [Relectures]
@@ -177,10 +180,17 @@ paths:
                   properties:
                     etudiantId: { type: integer, format: int64 }
                     nom: { type: string }
-                    presences: { type: integer }
+                    presences:
+                      type: integer
+                      description: Nombre total de présences sur les sessions de la promotion
                     exercicesDeposes: { type: integer }
-                    moyenne: { type: number, nullable: true }
-                    relecturesEnAttente: { type: integer }
+                    moyenne:
+                      type: number
+                      nullable: true
+                      description: Moyenne des notes reçues, calculée par l'API
+                    relecturesEnAttente:
+                      type: integer
+                      description: Nombre de relectures assignées à cet étudiant et non rendues
         "404": { $ref: "#/components/responses/Erreur" }   # PROMOTION_INCONNUE
 
   # ============================= LIBRE (ajouts du candidat) =============================
@@ -241,7 +251,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [id, titre, code, ouvertureAt, expirationAt]
+                required: [id, titre, code, ouvertureAt, expirationAt, finAt, clotureAt]
                 properties:
                   id: { type: integer, format: int64 }
                   titre: { type: string }
@@ -249,12 +259,40 @@ paths:
                   promotionId: { type: integer, format: int64 }
                   ouvertureAt: { type: string, format: date-time }
                   expirationAt: { type: string, format: date-time }
-                  clotureAt: { type: string, format: date-time, nullable: true }
+                  finAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  clotureAt:
+                    type: string
+                    format: date-time
+                    nullable: true
         "404": { $ref: "#/components/responses/Erreur" }   # SESSION_INCONNUE
+
+  /api/sessions/{id}/fin:
+    post:
+      summary: "Le formateur termine la session ; l'auto-marquage cesse sans clore les dépôts (RG2/RG11)"
+      tags: [Sessions]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Session terminée
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, finAt]
+                properties:
+                  id: { type: integer, format: int64 }
+                  finAt: { type: string, format: date-time }
+        "404": { $ref: "#/components/responses/Erreur" }   # SESSION_INCONNUE
+        "409": { $ref: "#/components/responses/Erreur" }   # SESSION_DEJA_TERMINEE
+        "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
 
   /api/sessions/{id}/cloture:
     post:
-      summary: "TRou H1 — Le formateur clôt une session ; la session devient en lecture seule (RG15)"
+      summary: "Trou H1 — Le formateur clôt une session ; si elle est encore ouverte, elle est aussi terminée (RG15)"
       tags: [Sessions]
       parameters:
         - $ref: "#/components/parameters/IdPath"
@@ -265,12 +303,79 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [id, clotureAt]
+                required: [id, finAt, clotureAt]
                 properties:
                   id: { type: integer, format: int64 }
+                  finAt: { type: string, format: date-time }
                   clotureAt: { type: string, format: date-time }
         "404": { $ref: "#/components/responses/Erreur" }   # SESSION_INCONNUE
         "409": { $ref: "#/components/responses/Erreur" }   # SESSION_DEJA_CLOTUREE
+
+  /api/sessions/{id}/presences:
+    get:
+      summary: "Détail par étudiant de la présence à une session, avec sa source (Q14/Q16)"
+      tags: [Presences]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Présences de la session
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [etudiantId, nom, present, source, marqueeAt]
+                  properties:
+                    etudiantId: { type: integer, format: int64 }
+                    nom: { type: string }
+                    present: { type: boolean }
+                    source:
+                      type: string
+                      nullable: true
+                      enum: [ETUDIANT, FORMATEUR]
+                    marqueeAt:
+                      type: string
+                      format: date-time
+                      nullable: true
+        "404": { $ref: "#/components/responses/Erreur" }   # SESSION_INCONNUE
+
+  /api/sessions/{id}/exercices:
+    get:
+      summary: "Exercices d'une session et état de leur relecture, pour rendre Q11 visible au formateur"
+      tags: [Exercices]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Exercices et relectures de la session
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, etudiantId, statut, relecteurId, commenceeAt, rendueAt]
+                  properties:
+                    id: { type: integer, format: int64 }
+                    etudiantId: { type: integer, format: int64 }
+                    statut:
+                      type: string
+                      enum: [DEPOSE, EN_ATTENTE_DE_RELECTURE, EN_ATTENTE_SANS_RELECTEUR, RELU, EN_ATTENTE_VERROUILLE, RELU_VERROUILLE]
+                    relecteurId:
+                      type: integer
+                      format: int64
+                      nullable: true
+                    commenceeAt:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    rendueAt:
+                      type: string
+                      format: date-time
+                      nullable: true
+        "404": { $ref: "#/components/responses/Erreur" }   # SESSION_INCONNUE
 
   /api/presences/manuelle:
     post:
@@ -299,8 +404,31 @@ paths:
                   sessionId: { type: integer, format: int64 }
                   etudiantId: { type: integer, format: int64 }
                   source: { type: string, enum: [FORMATEUR] }
+        "400": { $ref: "#/components/responses/Erreur" }   # CHAMP_MANQUANT
         "404": { $ref: "#/components/responses/Erreur" }   # SESSION_INCONNUE
         "409": { $ref: "#/components/responses/Erreur" }   # DEJA_PRESENT
+        "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
+
+  /api/relectures/{id}/debut:
+    post:
+      summary: "Le relecteur commence sa relecture ; le lien de l'exercice devient non remplaçable (Q13)"
+      tags: [Relectures]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Relecture commencée
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, commenceeAt]
+                properties:
+                  id: { type: integer, format: int64 }
+                  commenceeAt: { type: string, format: date-time }
+        "403": { $ref: "#/components/responses/Erreur" }   # AUTO_RELECTURE
+        "404": { $ref: "#/components/responses/Erreur" }   # RELECTURE_INCONNUE
+        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_COMMENCEE
         "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
 
   /api/exercices/{id}:
@@ -328,11 +456,41 @@ paths:
                 required: [id, statut]
                 properties:
                   id: { type: integer, format: int64 }
-                  statut: { type: string }
+                  statut:
+                    type: string
+                    description: État de l'exercice ; EN_ATTENTE_DE_RELECTURE après le dépôt
+                    enum: [DEPOSE, EN_ATTENTE_DE_RELECTURE, EN_ATTENTE_SANS_RELECTEUR, RELU, EN_ATTENTE_VERROUILLE, RELU_VERROUILLE]
         "400": { $ref: "#/components/responses/Erreur" }   # LIEN_INVALIDE
         "404": { $ref: "#/components/responses/Erreur" }   # EXERCICE_INCONNU
         "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_COMMENCEE
         "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
+
+  /api/etudiants/{etudiantId}/relectures-recues:
+    get:
+      summary: "Résultats reçus par l'auteur, sans identité du relecteur (Q8)"
+      tags: [Relectures]
+      parameters:
+        - name: etudiantId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Notes et commentaires reçus
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [exerciceId, sessionId, lienExercice, note, commentaire]
+                  properties:
+                    exerciceId: { type: integer, format: int64 }
+                    sessionId: { type: integer, format: int64 }
+                    lienExercice: { type: string, format: uri }
+                    note: { type: integer, minimum: 0, maximum: 20 }
+                    commentaire: { type: string }
+        "404": { $ref: "#/components/responses/Erreur" }   # ETUDIANT_INCONNU
 
   /api/relectures/a-faire:
     get:
@@ -352,11 +510,16 @@ paths:
                 type: array
                 items:
                   type: object
-                  required: [relectureId, exerciceId, lienExercice]
+                  required: [relectureId, exerciceId, lienExercice, commenceeAt]
                   properties:
                     relectureId: { type: integer, format: int64 }
                     exerciceId: { type: integer, format: int64 }
                     lienExercice: { type: string, format: uri }
+                    commenceeAt:
+                      type: string
+                      format: date-time
+                      nullable: true
+        "404": { $ref: "#/components/responses/Erreur" }   # ETUDIANT_INCONNU
 
 components:
   parameters:

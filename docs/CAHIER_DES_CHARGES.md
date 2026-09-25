@@ -1,7 +1,7 @@
 # Cahier des charges — KFOKAM48 : gestion de présence et relecture par les pairs
 
 **Auteur :** Ngansop Sumo Rainer · 221
-**Version :** 1 · **Date :** 25/09/2026
+**Version :** 1.1 · **Date :** 25/09/2026
 **Centre :** Yaoundé · **Compte GitHub :** suner-dev · **Dépôt :** `kfokam48-epreuve-221`
 **Frontend choisi :** Angular, parce que son socle complet (injection de dépendances,
 `HttpClient`, RxJS/`signal`) impose une couche de service dédiée qui centralise les appels API —
@@ -28,6 +28,12 @@ session :
 - le formateur consulte un **tableau** consolidé : présences, exercices déposés, moyenne reçue et
   relectures encore dues, par étudiant.
 
+Trois événements de vie doivent rester distincts : l'**ouverture**, la **fin** du cours et la
+**clôture administrative**. Le code et l'auto-marquage expirent ou cessent à la fin ; le dépôt,
+la relecture et leur correction restent possibles après la fin, mais seulement jusqu'à la clôture.
+Le formateur peut clôturer directement une session encore ouverte ; cette action termine aussi le
+cours. Cette décision comble le trou H7 (§7).
+
 L'objectif n'est pas la beauté de l'interface (le rendu visuel n'est pas noté) mais un outil
 correct, conforme à un contrat d'API imposé, dont les règles de gestion sont respectées et
 testables. Population visée : promotions de l'ordre de quelques dizaines d'étudiants, usage sur
@@ -37,32 +43,37 @@ téléphone pour l'étudiant, sur poste fixe pour le formateur.
 
 | Acteur | Ce qu'il peut faire | Ce qu'il ne peut pas faire |
 |---|---|---|
-| **Formateur** | Ouvrir une session (→ code) ; **clôturer** une session ; ajouter une présence à la main (Q14) ; consulter le tableau (Q16) | Marquer sa propre présence ; déposer un exercice ; relire ; modifier une relecture déjà rendue par un étudiant |
-| **Étudiant** | Choisir son nom dans une liste (Q1, pas de mot de passe) ; marquer sa présence avec le code (Q2) ; déposer / remplacer le lien de son exercice (Q12, Q13) ; voir la note + commentaire reçus, **sans le nom du relecteur** (Q8) | Marquer sa présence hors ouverture de session (Q3) ou avec un code expiré (Q2) ; déposer deux exercices pour une même session (Q6/unicité) ; relire son propre exercice (Q5) |
-| **Relecteur** | Voir la/les relecture(s) qui lui **son**t assignées ; rendre une note entière 0–20 + commentaire (Q9) ; **corriger** sa relecture tant que la session n'est pas clôturée (Q10) | Être assigné à son propre exercice (Q5) ; voir l'identité de l'auteur au-delà de ce qu'exige la correction ; corriger après clôture (Q10 borné) |
+| **Formateur** | Ouvrir une session (→ code) ; la **terminer** puis la **clôturer** ; ajouter une présence à la main (Q14) ; consulter le tableau agrégé et le détail par session (Q16) | Marquer sa propre présence ; déposer un exercice ; relire ; modifier une relecture rendue par un étudiant |
+| **Étudiant** | Choisir son nom dans une liste (Q1, pas de mot de passe) ; marquer sa présence avec le code pendant l'ouverture et avant expiration (Q2, Q3) ; déposer / remplacer le lien de son exercice jusqu'à la clôture (Q12, Q13) ; voir la note + commentaire reçus, **sans identité du relecteur** (Q8) | Marquer sa présence après la fin ou avec un code expiré ; déposer deux exercices pour la même session (unicité du contrat) ; relire son propre exercice (Q5) |
+| **Relecteur** | Voir les relectures qui lui sont assignées ; **commencer** sa relecture ; rendre une note entière 0–20 + commentaire (Q9) ; **corriger** sa relecture tant que la session n'est pas clôturée (Q10) | Être assigné à son propre exercice (Q5) ; modifier le lien après le début de la relecture (Q13) ; corriger après clôture (Q10 borné) |
 
 **Tranchage (§2, conséquence sur le modèle de données) :** le *relecteur* n'est **pas un acteur
 distinct** — c'est un **étudiant** tenu d'exécuter une relecture qui lui a été **assignée**. En
-conséquence, il n'existe pas d'entité « Relecteur » : une relecture est une association
-`Exercice` ↔ `Étudiant(relecteurId)`, produite par le tirage aléatoire (Q7). Le « rôle » de
-relecteur est donc un **état** d'un étudiant, porté par l'existence d'une ligne `Relecture`.
+conséquence, il n'existe pas d'entité « Relecteur » : une affectation `Relecture` relie un exercice,
+un `Etudiant.relecteurId` obligatoire lorsqu'un pair est disponible, puis éventuellement une note.
+Une affectation sans `relecteurId` existe seulement pour conserver le cas H3 en attente ; elle ne
+donne pas le rôle de relecteur. Le rôle de relecteur est donc porté par une affectation **active et
+attribuée** à cet étudiant.
 
 ## 3. Périmètre
 
-**Inclus dans cette version (Must + Should + Could du backlog) :**
-- Ouverture / clôture de session et code de présence à expiration (Q2, trou « clôture » §7 H1).
+**Inclus dans le périmètre fonctionnel visé (Must, puis Should/Could selon le temps) :**
+- Ouverture, **fin**, clôture de session et code de présence à expiration (Q2, trous H1/H7).
 - Marquage de présence par code, présence ajoutée par le formateur (Q14), unicité d'une présence.
 - Dépôt du lien d'un exercice, remplacement tant que la relecture n'a pas commencé (Q12, Q13).
 - Assignment **automatique** d'un relecteur (tirage au hasard parmi les présents, jamais soi-même)
   (Q6, Q7, Q5).
-- Rendu d'une relecture (note entière 0–20 + commentaire) et **correction avant clôture** (Q9, Q10).
-- Tableau du formateur : présences, exercices déposés, moyenne reçue, relectures dues (Q16).
+- Début, rendu d'une relecture (note entière 0–20 + commentaire) et **correction avant clôture** (Q9, Q10).
+- Consultation par l'auteur de la note et du commentaire reçus, sans identité du relecteur (Q8).
+- Tableau du formateur agrégé et détails par session : présence/source (Q14, Q16), exercices dont la
+  relecture reste due (Q11), relectures dues par étudiant (Q16).
 - 3 écrans frontend (formateur / étudiant / relecteur) (F2) ; données de démonstration au démarrage.
 
 **Explicitement exclu (et pourquoi) :**
 - **Authentification / mots de passe** : Q1 demande le choix d'un nom dans une liste, « ne perdez
-  pas de temps là-dessus ». → **réponse non utile** au vrai besoin, retenue comme périmètre hors
-  projet (voir §7).
+  pas de temps là-dessus ». L'implémentation d'une authentification est donc hors projet ; la
+  sélection explicite de l'identité dans une liste reste incluse (EF13) parce qu'elle est nécessaire
+  pour alimenter `etudiantId` sans inventer une autre règle.
 - **Gestion des comptes/promotions hors normes** (CRUD promotions, inscriptions) : promotions et
   étudiants sont des **données de référence** chargées en démo, pas un module à développer.
 - **Téléversement de fichiers** : seul un **lien URI** est déposé (`lien`, `format: uri` du contrat).
@@ -78,19 +89,21 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 | Réf | Exigence | Critère d'acceptation vérifiable | Priorité |
 |---|---|---|---|
 | **EF1** | Le formateur ouvre une session et obtient un code de présence | Quand j'envoie `{titre, promotionId}`, alors je reçois `201 {id, code, ouvertureAt, expirationAt}` avec `expirationAt = ouvertureAt + 15 min` | Must |
-| **EF2** | L'étudiant marque sa présence avec le code | Quand j'envoie un `{code, etudiantId}` valide et non expiré, alors `201 {id, sessionId, etudiantId, source=ETUDIANT}` et l'étudiant apparaît « présent » au tableau | Must |
-| **EF3** | L'étudiant dépose le lien de son exercice pour une session | Quand j'envoie `{sessionId, etudiantId, lien}` (URI valide) et que j'ai un exercice non déposé pour cette session, alors `201 {id, statut=EN_ATTENTE_DE_RELECTURE}` | Must |
-| **EF4** | Le système assigne un relecteur à chaque exercice | Quand un exercice est déposé, alors le système choisit **au hasard** un étudiant **présent à cette session**, **≠ auteur**, et crée une relecture liée | Must |
-| **EF5** | Le relecteur rend une note et un commentaire | Quand j'envoie `{note∈[0,20] entier, commentaire}` sur ma relecture assignée non encore rendue, alors `200` et la note est comptée dans la moyenne de l'auteur | Must |
-| **EF6** | Le formateur consulte le tableau par promotion | Quand j'appelle `GET /api/tableau?promotionId=`, alors je reçois, par étudiant : présences, exercices déposés, moyenne reçue, relectures en attente | Must |
-| **EF7** | Un exercice peut avoir **un seul** relecteur | Quand un second relecteur est demandé pour le même exercice, alors il n'en est pas assigné (contrainte d'unicité) | Must |
-| **EF8** | Le formateur ajoute une présence à la main | Quand le formateur marque la présence d'un étudiant (sans code), alors la présence est créée avec `source=FORMATEUR` et le tableau le signale | Must |
-| **EF9** | L'étudiant remplace le lien de son exercice | Quand je modifie mon lien **avant** que la relecture ne soit rendue, alors le lien est mis à jour ; sinon refusé | Should |
-| **EF10** | Le relecteur corrige sa relecture avant clôture | Quand je modifie ma note/mon commentaire **et que la session n'est pas clôturée**, alors la relecture est mise à jour | Should |
-| **EF11** | Le formateur clôture une session | Quand j'appelle la clôture d'une session ouverte, alors elle est marquée clôturée (`clotureAt`) et toute écriture dessus est ensuite refusée | Should |
-| **EF12** | Anti-devinette des codes de présence | Quand un étudiant échoue **5 fois** sur le même code, alors il est bloqué **2 minutes** pour cet essai | Should |
-| **EF13** | L'étudiant choisit son identité dans une liste | Quand j'ouvre l'écran étudiant, alors une liste d'étudiants (par promotion) m'est proposée, sans mot de passe | Must |
-| **EF14** | Confidentialité de l'identité du relecteur | Quand l'auteur consulte sa note, alors ni le nom ni l'`id` du relecteur ne lui sont exposés (seulement note + commentaire) | Must |
+| **EF2** | L'étudiant marque sa présence avec le code | Quand j'envoie un `{code, etudiantId}` valide, avant expiration et avant la fin de session, alors `201 {id, sessionId, etudiantId, source=ETUDIANT}` et la présence apparaît dans le détail de la session | Must |
+| **EF3** | L'étudiant dépose le lien de son exercice pour une session | Quand j'envoie `{sessionId, etudiantId, lien}` valide avant la clôture, alors `201`, une seule affectation est créée et le statut indique l'attente de relecture ; après la fin, le dépôt reste autorisé jusqu'à la clôture | Must |
+| **EF4** | Le système affecte un pair à chaque exercice | Quand un exercice est déposé et qu'au moins un étudiant présent à cette session est différent de l'auteur, alors le système en choisit **au hasard** exactement un et crée l'affectation ; sinon l'exercice reste visible en attente sans relecteur | Must |
+| **EF5** | Le relecteur rend une note et un commentaire | Quand j'envoie `{note∈[0,20] entier, commentaire}` sur ma relecture assignée non encore rendue et avant la clôture, alors `200` et la note est comptée dans la moyenne de l'auteur | Must |
+| **EF6** | Le formateur consulte le tableau par promotion | Quand j'appelle `GET /api/tableau?promotionId=`, alors je reçois les compteurs imposés ; les endpoints de détail donnent en plus présence/source par session et exercices dont la relecture est due (Q11/Q14/Q16) | Must |
+| **EF7** | Un exercice possède au plus une affectation de relecture | Quand le dépôt ou une réévaluation traite de nouveau le même exercice, alors aucune seconde ligne `Relecture` n'est créée (`exerciceId` unique) | Must |
+| **EF8** | Le formateur ajoute une présence à la main | Quand le formateur marque la présence d'un étudiant avant clôture, alors `201` contient `source=FORMATEUR` et le détail de la session expose cette source | Must |
+| **EF9** | L'étudiant remplace le lien de son exercice | Quand je modifie mon lien avant tout `commenceeAt` de la relecture, alors le lien est mis à jour ; dès le début de relecture, il est refusé | Should |
+| **EF10** | Le relecteur corrige sa relecture avant clôture | Quand je modifie ma note/commentaire et que la session n'est pas clôturée, alors la relecture reste rendue, est mise à jour et l'exercice reste `RELU` | Should |
+| **EF11** | Le formateur clôt une session | Quand j'appelle la clôture, alors `clotureAt` est fixé, `finAt` l'est aussi si elle était encore ouverte, et toute écriture liée est ensuite refusée | Must |
+| **EF12** | Anti-devinette des codes de présence | À partir de la cinquième saisie invalide faite sous l'`etudiantId` déclaré, alors les nouvelles tentatives sont refusées avec `400 TROP_ESSAIS` pendant 120 secondes | Should |
+| **EF13** | L'étudiant choisit son identité dans une liste | Quand j'ouvre l'écran étudiant, alors une liste d'étudiants de la promotion m'est proposée, sans mot de passe | Must |
+| **EF14** | Confidentialité de l'identité du relecteur | Quand l'auteur consulte `GET /api/etudiants/{id}/relectures-recues`, alors il reçoit note et commentaire mais aucun nom ni identifiant de relecteur | Must |
+| **EF15** | Le formateur termine une session | Quand j'appelle la fin d'une session ouverte, alors `finAt` est fixé, l'auto-marquage cesse, mais le dépôt et la relecture restent possibles jusqu'à la clôture | Must |
+| **EF16** | Le relecteur commence une affectation attribuée | Quand j'appelle `POST /api/relectures/{id}/debut`, alors `commenceeAt` est fixé et le remplacement du lien devient impossible jusqu'à la clôture | Must |
 
 ## 5. Exigences non fonctionnelles
 
@@ -100,7 +113,7 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 | **ENF2** | Le tableau répond en < 2 s pour une promotion de 60 étudiants | Mesure chronométrée de `GET /api/tableau` avec le jeu de démo (ou test d'intégration temporisé) |
 | **ENF3** | Démarrage en ≤ 3 commandes (ou `docker compose up`) depuis un clone vierge | Exécution pas-à-pas du `README` dans un dossier vide |
 | **ENF4** | Schéma de base **versionné** et reproductible | Migrations Flyway commitées ; `ddl-auto` ≠ `update` hors tests |
-| **ENF5** | Données de démonstration chargées au démarrage (promotions, étudiants, 1 session) | Au premier lancement, le tableau n'est pas vide |
+| **ENF5** | Données de démonstration réalistes chargées au démarrage | Au premier lancement : 60 étudiants, au moins deux sessions, présences ETUDIANT/FORMATEUR, un exercice RELU et un exercice en attente avec/sans relecteur |
 | **ENF6** | Gestion d'erreurs **centralisée** et format d'erreur contractuel `∀` erreur | Aucun corps d'erreur par défaut Spring ; tests sur les cas 400/403/404/409/410 |
 | **ENF7** | Aucune règle métier dupliquée frontend/backend (not. moyenne) | Le frontend n'affiche que ce que renvoie l'API (revue de code + F3) |
 
@@ -108,22 +121,25 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 
 | Réf | Règle | Source |
 |---|---|---|
-| **RG1** | Un code de présence expire **15 min** après l'ouverture de la session ; après, il est refusé (`410 CODE_EXPIRE`) | Q2 |
-| **RG2** | Une présence ne peut être marquée que **pendant** la session ouverte ; jamais après la fin | Q3 |
-| **RG3** | Un étudiant ne peut marquer sa présence **qu'une fois** par session (unicité `(sessionId, etudiantId)`) → sinon `409 DEJA_PRESENT` | Q3 + tableau Q16 |
-| **RG4** | Après **5 tentatives** de code échouées pour un étudiant, blocage de **2 minutes** | Q4 |
+| **RG1** | Un code de présence expire **15 min** après l'ouverture ; à `now >= expirationAt`, il est refusé (`410 CODE_EXPIRE`) | Q2 |
+| **RG2** | L'auto-marquage est permis seulement avant `finAt` ; une fin de session l'interdit sans clore les dépôts | Q3 + hypothèse H7 |
+| **RG3** | Un étudiant ne peut marquer sa présence **qu'une fois** par session (unicité `(sessionId, etudiantId)`) → sinon `409 DEJA_PRESENT` | contrat imposé `409 DEJA_PRESENT` |
+| **RG4** | À partir de la 5e saisie invalide faite sous un `etudiantId` déclaré, bloquer les nouveaux essais pendant **120 s**, puis remettre le compteur à zéro | Q4 + hypothèses H4/H5 |
 | **RG5** | Un étudiant **ne peut jamais** relire son propre exercice → `403 AUTO_RELECTURE` | Q5 |
-| **RG6** | **Un seul relecteur** par exercice | Q6 |
-| **RG7** | Le relecteur est choisi **par le système, au hasard, parmi les étudiants présents à cette session** | Q7 |
+| **RG6** | **Un seul relecteur attribué au plus** par exercice | Q6 |
+| **RG7** | Le relecteur est choisi **par le système, au hasard, parmi les étudiants présents à cette session**, différents de l'auteur | Q7 |
 | **RG8** | La note est un **entier de 0 à 20** inclus → sinon `400 NOTE_INVALIDE` | Q9 |
-| **RG9** | Une relecture peut être **corrigée tant que la session n'est pas clôturée** | Q10 (arbitrage §7 C1) |
-| **RG10** | Un exercice dont la relecture n'est pas rendue reste « **en attente** » et est visible au formateur | Q11 |
-| **RG11** | Un exercice peut être déposé **jusqu'à la clôture** de la session (pas seulement pendant le cours) | Q12 |
-| **RG12** | Le lien d'un exercice est remplaçable **tant que sa relecture n'a pas commencé** (note non rendue) | Q13 |
-| **RG13** | Une présence ajoutée manuellement est marquée `source=FORMATEUR` (et le tableau le montre) | Q14 |
-| **RG14** | L'auteur d'un exercice **ne voit jamais** l'identité de son relecteur | Q8 |
-| **RG15** | Une session **clôturée** est en lecture seule (plus de dépôt, de présence, de correction) | déduit de Q10/Q12, formalisé §7 H1 |
-| **RG16** | Un même étudiant ne dépose **qu'un seul** exercice par session → sinon `409 EXERCICE_DEJA_DEPOSE` | Q16 (« nb exercices déposés ») + contrat |
+| **RG9** | Une relecture peut être **corrigée tant que la session n'est pas clôturée** ; l'exercice reste `RELU` | Q10 (arbitrage §7 C1) |
+| **RG10** | Un exercice dont la relecture n'est pas rendue reste « **en attente** » et est visible au formateur via le détail de session | Q11 |
+| **RG11** | Un exercice peut être déposé après la fin mais **jusqu'à la clôture** de la session | Q12 + hypothèse H7 |
+| **RG12** | Le lien est remplaçable tant que `Relecture.commenceeAt IS NULL` ; le simple fait que la note ne soit pas rendue ne suffit pas | Q13 + hypothèse H8 |
+| **RG13** | Une présence ajoutée manuellement est marquée `source=FORMATEUR` et cette source est visible dans le détail de session | Q14 |
+| **RG14** | L'auteur ne voit jamais le nom du relecteur ; son identifiant est aussi masqué pour empêcher la ré-identification | Q8 + hypothèse H9 |
+| **RG15** | Une session **clôturée** est en lecture seule (plus de dépôt, auto-présence, remplacement, rendu ou correction) | Q10/Q12 + hypothèse H1 |
+| **RG16** | Un même étudiant ne dépose **qu'un seul** exercice par session → sinon `409 EXERCICE_DEJA_DEPOSE` | contrat imposé `409 EXERCICE_DEJA_DEPOSE` |
+| **RG17** | `finAt` et `clotureAt` sont deux événements distincts ; la clôture directe termine aussi la session si nécessaire | hypothèse H7 |
+| **RG18** | Le premier `POST /api/relectures/{id}/debut` fixe `commenceeAt` ; l'opération est idempotente dans son effet | Q13 + hypothèse H8 |
+| **RG19** | `relecturesEnAttente` compte les affectations dues à l'étudiant ; les exercices sans pair relèvent d'un indicateur Q11 distinct | Q11/Q16 + hypothèse H10 |
 
 ## 7. Zones d'ombre, hypothèses et contradictions tranchées
 
@@ -131,22 +147,27 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 
 | Réponses en conflit | Ce que j'ai choisi | Pourquoi |
 |---|---|---|
-| **Q10** (« un relecteur peut **corriger** sa note tant que le formateur n'a pas clôturé ») **vs Q15** (« la note est **définitive** une fois envoyée, il ne peut plus y revenir ») | **Je retiens Q10** (correction possible avant clôture) | Q10 est **opérationnelle et conditionnée** (« tant que la session n'est pas clôturée ») et **s'articule avec Q11** (le formateur voit ce qui reste en attente, donc il existe une phase vivante avant la clôture) ; Q15 n'est qu'une **intention générale** (« plus honnête ») sans condition. En cas de conflit entre une règle précise datée d'une intention floue, la règle précise l'emporte. **Conséquence API :** `POST /api/relectures/{id}` (rendu initial, `409` si déjà rendue) reste conforme à l'annexe ; la **correction** passe par une opération dédiée `PUT /api/relectures/{id}`, refusée après clôture (**RG9/RG15**). On honore ainsi **à la fois** le contrat figé et le choix Q10. |
+| **Q10** (« un relecteur peut **corriger** sa note tant que le formateur n'a pas clôturé ») **vs Q15** (« la note est **définitive** une fois envoyée, il ne peut plus y revenir ») | **Je retiens Q10** (correction possible avant clôture) | Q10 est une règle **détaillée et conditionnée** ; Q10 et Q12 donnent explicitement une borne temporelle par la clôture. Q11 confirme qu'un exercice peut rester non relu, sans définir à lui seul la clôture. Q15 exprime une intention générale sans mécanisme ni échéance. **Conséquence API :** `POST /api/relectures/{id}` reste le rendu initial et renvoie `409` si déjà rendue ; `PUT /api/relectures/{id}` corrige jusqu'à la clôture. L'exercice demeure `RELU` après correction. |
 
 ### 7.2 Trous que personne n'a comblés (le sujet annonce ≥ 1 trou)
 
 | Point | Réponse client (Qx) ou hypothèse | Décision retenue | Conséquence |
 |---|---|---|---|
-| **H1 — La clôture de session est partout supposée, jamais définie.** Q10/Q11/Q12 disent « tant que le formateur n'a pas clôturé » / « jusqu'à ce que je clôture », mais **aucune question ne définit qui clôture, comment, ni ce que la clôture verrouille** — et aucune opération du contrat imposé ne l'expose. | Hypothèse : **seul le formateur clôture** ; la clôture fixe `clotureAt` (non modifiable) et **verrouille en écriture** la session. | J'ajoute `POST /api/sessions/{id}/cloture` (partie libre du contrat) et l'attribut `clotureAt` à `Session`. **RG15**. | Sans cela, Q10 et Q12 sont inapplicables : la « clôture » devient un concept de modélisation réel, pas implicite. |
-| **H2 — `POST /api/relectures/{id}` : que désigne `{id}` ?** Le corps imposé ne porte **aucune identité** de relecteur, or il faut connaître le relecteur pour refuser l'auto-relecture (Q5) et rattacher la note. | Hypothèse : `{id}` = **identifiant de la `Relecture` (assignation)** créée par le système au tirage (RG7), qui porte déjà `relecteurId` et `exerciceId`. | Le backend dérive le relecteur de l'assignation, vérifie `auteur ≠ relecteur` (**403**), et refuse le doublon (**409** si note déjà présente). | Évite d'ajouter un champ hors contrat dans le corps imposé ; conforme B2. |
-| **H3 — Que faire si aucun relecteur éligible n'est présent ?** RG7 tire parmi les présents ≠ auteur ; si la session ne compte qu'un seul présent (l'auteur) ou 0 pair valide. | Hypothèse : l'exercice reste **`EN_ATTENTE_DE_RELECTURE` sans relecteur assigné** (`relecteurId` null) et apparaît au formateur via `relecturesEnAttente` (Q11). | Pas d'assignation forcée ; le tableau montre l'anomalie. Aucune erreur client. | Le cas est **visible** (exigence Q11) sans inventer un relecteur fantôme. |
-| **H4 — Sans mot de passe (Q1), comment le backend sait-il « qui » agit ?** | Décision : l'identité est **portée par la donnée d'entrée** (`etudiantId` fourni par le frontend après choix dans la liste). **Pas d'authentification** (hors scope §3) ; l'absence d'usurpation est une **limite assumée** du périmètre. | Conformément à Q1 (« ne perdez pas de temps là-dessus »). | Simplifie ; documente la limite. |
-| **H5 — Le blocage anti-devinette (Q4/RG4) : quel code HTTP ?** Le contrat n'impose que 400/409/410 sur `POST /api/presences`. | Hypothèse : renvoyer **`429 TROP_ESSAIS`** (hors des trois imposés) au-delà de 5 échecs, dans le **format d'erreur standard** `{code, message}`. | Priorité **Should** (EF12). Alternative notée : défaut 400 si on veut rester strictement dans les codes listés. | Le B2 exige la **présence** des codes imposés, pas l'**exclusivité** ; la condition d'erreur est nouvelle mais cohérente. |
-| **H6 — « présence à chaque session » vs code expiré (Q2/Q3/Q14) :** un étudiant peut-il être marqué présent **après expiration du code** ? | Décision : le code n'autorise l'**auto-marquage** que pendant les 15 min (RG1) ; **après expiration et avant clôture**, seule une présence `source=FORMATEUR` (Q14) est possible. | `POST /api/presences` (étudiant) → 410 après expiration ; `POST /api/presences/manuelle` (formateur) → autorisée tant que non clôturé. | Distingue clairement les deux voies (contrat `source` existe **pour ça**, cf. annexe B). |
+| **H1 — La clôture de session est partout supposée, jamais définie.** Q10 et Q12 mentionnent la clôture, mais aucune question ne définit qui clôture, comment, ni ce qu'elle verrouille. | Hypothèse : le formateur clôt ; `clotureAt` est non modifiable et verrouille toute écriture liée. | `POST /api/sessions/{id}/cloture`, `Session.clotureAt`, **RG15**. | Q10/Q12 deviennent des règles exécutables plutôt que des intentions. |
+| **H2 — `POST /api/relectures/{id}` : que désigne `{id}` ?** Le corps imposé ne porte aucune identité de relecteur. | `{id}` est l'identifiant de l'affectation `Relecture` créée au dépôt ; elle porte `exerciceId` et `relecteurId`. | Le backend dérive l'acteur de l'affectation, vérifie l'absence d'auto-relecture et le doublon. | Aucun champ supplémentaire n'est ajouté au corps imposé. |
+| **H3 — Que faire si aucun pair éligible n'est présent ?** Q7 n'explique pas le cas où seul l'auteur est présent. | Créer une affectation unique avec `relecteurId = null` et le statut `EN_ATTENTE_SANS_RELECTEUR`. | Le détail des exercices de session rend Q11 visible ; cet état ne compte dans les relectures dues d'aucun étudiant. | Aucun relecteur fantôme et aucune présence forcée. |
+| **H4 — Sans mot de passe (Q1), comment le backend sait-il « qui » agit ?** | L'identité déclarée est `etudiantId`, choisi dans la liste ; aucune authentification ni garantie anti-usurpation. | EF13 fournit la liste ; le risque est documenté et Q4 ne peut être contourné que de façon volontairement externe au client. | Q1 respectée sans ajouter d'authentification. |
+| **H5 — Le blocage anti-devinette (Q4/RG4) : quel périmètre et quel statut ?** Un code inconnu n'a pas de `sessionId` fiable. | Compter les saisies invalides par `etudiantId` déclaré ; à partir de la 5e, répondre `400 TROP_ESSAIS` pendant 120 s. | Conserve exactement les statuts imposés ; pas de nouveau `429`. Le compteur est remis à zéro après le blocage ou un succès. | Plus cohérent avec B2 que le 429 initialement envisagé. |
+| **H6 — Présenter un étudiant après l'expiration du code ?** | L'auto-marquage cesse ; le formateur peut encore ajouter `source=FORMATEUR` jusqu'à la clôture. | `POST /api/presences` → `410 CODE_EXPIRE` ; endpoint manuel disponible. | La correction manuelle Q14 est conservée. |
+| **H7 — La fin de session n'existe pas dans le modèle, bien que Q3 la distingue de la clôture Q12.** | Ajouter `finAt` et `POST /api/sessions/{id}/fin` ; à la fin, blocage de l'auto-marquage seul. Une clôture directe fixe aussi `finAt` si nécessaire. | **EF15, RG2/RG11/RG17**, D2, D3, D4 et endpoints de session sont alignés. | Élimine la confusion qui rendait RG2 et RG11 inapplicables. |
+| **H8 — Que signifie « commencé » pour Q13 ?** | Le premier appel explicite de démarrage fixe `commenceeAt` ; le remplacement du lien est alors refusé, même avant la note. | `POST /api/relectures/{id}/debut`, **EF9/EF16, RG12/RG18**. | Respecte littéralement Q13 au lieu de le confondre avec « note non rendue ». |
+| **H9 — Q8 masque-t-il seulement le nom ou aussi l'identifiant du relecteur ?** | Masquer les deux dans les réponses destinées à l'auteur ; ne pas exposer l'auteur au relecteur dans la liste des tâches. | **EF14/RG14** ; endpoint `/relectures-recues` sans `relecteurId`. | Confidentialité renforcée, hypothèse locale explicite. |
+| **H10 — Une affectation sans relecteur doit-elle créer une ligne de relecture et qui la compte ?** | Créer une seule affectation par exercice avec `relecteurId` nullable ; `relecturesEnAttente` du tableau impose compte seulement les affectations attribuées à l'étudiant. | Distinguer l'indicateur Q11 (exercices en attente) de l'indicateur Q16 (tâches dues à l'étudiant). | Évite de faire croire qu'un exercice sans pair est dû à quelqu'un. |
 
-**Note sur la « réponse non utile » :** **Q1** (mots de passe / connexion) ne structure aucune
-règle du produit ; elle est retenue **uniquement** comme exclusion de périmètre (H4). La signaler
-montre le tri demandé par `CLIENT.md`.
+**Note sur Q1 :** l'implémentation d'une authentification n'est pas utile dans le budget et reste
+exclue ; la sélection d'un nom dans une liste est en revanche une exigence fonctionnelle minimale
+(EF13) et l'identité déclarée sert uniquement de support technique, sans sécurité. La signaler montre
+que le tri demandé par `CLIENT.md` ne conduit pas à ignorer une décision utile.
 
 ## 8. Contraintes techniques
 
@@ -167,8 +188,9 @@ montre le tri demandé par `CLIENT.md`.
   profil `dev` sur **H2 fichier** + seed — documentée dans le `README`.
 - **Migrations** : Flyway, nommage `V1__init.sql`, `V2__seed_demo.sql` ; **la 1ʳᵉ migration doit
   exister avant l'ouverture de l'enveloppe** (le sujet prévient qu'elle touche le schéma).
-- **Stratégie de tests** : unitaire sur la **moyenne** et/ou le **contrôle note entière 0–20** +
-  sur **expiration du code (RG1)** ; intégration sur `POST /api/presences` (201 + 410 + 409).
+- **Stratégie de tests** : tests unitaires sur la moyenne, la note entière 0–20, l'expiration et
+  les transitions ; tests d'intégration sur `POST /api/presences` (201/400/409/410), la fin de
+  session, le démarrage de relecture et l'unicité de présence/exercice.
 - **Format d'erreur** : DTO `{"code","message"}` appliqué **à toutes** les erreurs, y compris 404
   validation. Message **en français**, code **stable en MAJUSCULES**.
 
