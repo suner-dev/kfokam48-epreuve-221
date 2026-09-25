@@ -99,7 +99,7 @@
   <section class="card" aria-labelledby="submission-title">
     <h2 id="submission-title">Rendre ma note</h2>
     @if (activeReview(); as review) {
-      <p>Vous rendez la relecture #{{ review.relectureId }}. Seule cette soumission initiale est proposée dans v0.1.</p>
+      <p>Vous rendez la relecture #{{ review.relectureId }}. C’est la soumission initiale ; vous pourrez la corriger juste après.</p>
       <form [formGroup]="reviewForm" (ngSubmit)="submitReview()" novalidate>
         <div class="form-grid">
           <div>
@@ -121,6 +121,43 @@
       </form>
     } @else {
       <p class="request-status">Commencez ou sélectionnez une relecture pour pouvoir rendre votre note.</p>
+    }
+
+    @if (lastRenderedReview(); as last) {
+      <div class="section-heading">
+        <div>
+          <h3 id="correction-title">Corriger ma relecture #{{ last.relectureId }}</h3>
+          <p>
+            Je peux corriger tant que la session n’est pas clôturée : un nouveau PUT remplace la
+            valeur précédente. Aucune opération du contrat ne liste mes relectures déjà rendues,
+            cette correction n’est donc proposée que pour celle que je viens de rendre.
+          </p>
+        </div>
+      </div>
+      <form [formGroup]="correctionForm" (ngSubmit)="correctReview()" novalidate>
+        <div class="form-grid">
+          <div>
+            <label for="correction-note">Note entière sur 20</label>
+            <input
+              id="correction-note"
+              type="number"
+              min="0"
+              max="20"
+              step="1"
+              formControlName="note"
+            />
+            @if (correctionForm.controls.note.touched && correctionForm.controls.note.invalid) {
+              <p class="field-error">La note doit être comprise entre 0 et 20.</p>
+            }
+          </div>
+          <div>
+            <label for="correction-comment">Commentaire</label>
+            <textarea id="correction-comment" rows="4" formControlName="commentaire"></textarea>
+          </div>
+        </div>
+        <p class="request-status">Dernière note envoyée : {{ last.note }}/20</p>
+        <button type="submit" [disabled]="actionStatus() === 'loading'">Corriger ma note</button>
+      </form>
     }
   </section>
 </section>

@@ -28,4 +28,12 @@ export class ReviewsApiService {
   submitReview(relectureId: number, body: SoumissionRelecture): Observable<void> {
     return this.http.post<void>(`/api/relectures/${relectureId}`, body);
   }
+
+  /**
+   * EF10, Q10, RG9 — le relecteur corrige sa note tant que la session n'est pas clôturée.
+   * `POST` reste le rendu initial ; c'est l'arbitrage Q10, tranché en section 7 du cahier.
+   */
+  correctReview(relectureId: number, body: SoumissionRelecture): Observable<void> {
+    return this.http.put<void>(`/api/relectures/${relectureId}`, body);
+  }
 }
