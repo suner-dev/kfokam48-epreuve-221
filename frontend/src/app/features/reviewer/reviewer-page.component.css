@@ -1,0 +1,173 @@
+.page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.page-header {
+  max-width: 54rem;
+}
+
+.eyebrow {
+  color: #0a5c91;
+  font-weight: 700;
+  letter-spacing: .06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3 {
+  color: #102a43;
+}
+
+h1 {
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  margin: .35rem 0;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin-top: 0;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: .75rem;
+  box-shadow: 0 2px 7px #102a4312;
+  padding: 1.25rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+label,
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: .4rem;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid #64748b;
+  border-radius: .4rem;
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  padding: .55rem .7rem;
+  width: 100%;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  background: #075985;
+  border: 1px solid #075985;
+  border-radius: .4rem;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  margin-top: 1rem;
+  min-height: 2.75rem;
+  padding: .5rem .9rem;
+}
+
+button.secondary {
+  background: #fff;
+  color: #075985;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.section-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  justify-content: space-between;
+}
+
+.section-heading button {
+  margin-top: 0;
+}
+
+.request-status,
+.field-error {
+  margin: .75rem 0 0;
+}
+
+.field-error,
+.error {
+  color: #9f1239;
+  font-weight: 600;
+}
+
+.success {
+  color: #166534;
+  font-weight: 700;
+}
+
+.review-list {
+  display: grid;
+  gap: .75rem;
+  margin-top: 1rem;
+}
+
+.review-card {
+  border: 1px solid #cbd5e1;
+  border-left: 4px solid #38bdf8;
+  border-radius: .4rem;
+  padding: 1rem;
+}
+
+.review-card.active {
+  background: #ecfeff;
+  border-color: #0e7490;
+}
+
+.review-card h3,
+.review-card p {
+  margin: 0;
+}
+
+.review-card p + p,
+.review-card p + button {
+  margin-top: .7rem;
+}
+
+.review-card a {
+  color: #075985;
+  font-weight: 700;
+}
+
+@media (max-width: 42rem) {
+  .card {
+    padding: 1rem;
+  }
+}
