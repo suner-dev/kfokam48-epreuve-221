@@ -85,7 +85,7 @@ classDiagram
     Session "1" --> "0..*" Presence : contient
     Session "1" --> "0..*" Exercice : reçoit
     Etudiant "1" --> "0..*" Exercice : dépose (auteur)
-    Exercice "1" --> "1" Relecture : possède une affectation (RG6/H10)
+    Exercice "1" --> "0..2" Relecture : possède jusqu'à deux affectations (RG20/H13, RG6 annulée)
     Etudiant "0..1" --> "0..*" Relecture : effectue lorsqu'il est attribué
     Etudiant "1" --> "0..*" CodeTentative : anti-devinette
     Presence ..> SourceEnum
@@ -102,7 +102,7 @@ classDiagram
 | `Session` | `session` | `id PK`, `promotion_id FK`, `formateur_id FK NULL`, **`code UNIQUE`**, `expiration_at = ouverture_at + interval '15 minutes'` (calculé au service, RG1), `fin_at NULL`, `cloture_at NULL` |
 | `Presence` | `presence` | `id PK`, `session_id FK`, `etudiant_id FK`, `source IN ('ETUDIANT','FORMATEUR')`, **`UNIQUE(session_id, etudiant_id)`** (RG3 → 409) |
 | `Exercice` | `exercice` | `id PK`, `session_id FK`, `etudiant_id FK`, `lien`, **`UNIQUE(session_id, etudiant_id)`** (RG16 → 409 EXERCICE_DEJA_DEPOSE), `statut IN (...)` |
-| `Relecture` | `relecture` | `id PK`, **`exercice_id UNIQUE FK NOT NULL`**, `relecteur_id FK NULL` (H3), `note SMALLINT CHECK (note BETWEEN 0 AND 20)` (RG8 → 400), `commencee_at TIMESTAMP NULL` (H8), `rendue_at TIMESTAMP NULL = en attente` (RG10) |
+| `Relecture` | `relecture` | `id PK`, **`exercice_id FK NOT NULL`**, `relecteur_id FK NULL`, **`UNIQUE (exercice_id, relecteur_id)`**, `note SMALLINT CHECK (note BETWEEN 0 AND 20)` (RG8 → 400), `commencee_at TIMESTAMP NULL` (H8), `rendue_at TIMESTAMP NULL = en attente` (RG10) |
 | `CodeTentative` | `code_tentative` | `id PK`, `etudiant_id FK`, `tentatives INT`, `bloque_jusqua TIMESTAMP NULL` (compteur global par identité déclarée, H5) |
 
 **Notes de modélisation (renvois au cahier §7) :**
@@ -112,3 +112,20 @@ classDiagram
   API** (`AVG(relecture.note)` par étudiant) et **jamais recalculée** par le frontend (**F3**).
 - `expiration_at` est **matérialisé** (plutôt que recalculé à chaque lecture) pour rendre `410`
   testable sans horloge externe ; il reste dérivé de `ouverture_at` à l'écriture (RG1).
+
+---
+
+## Révision 2.0 — après l'enveloppe de l'étape 3 (25/09/2026)
+
+Ce diagramme **devient faux** avec l'enveloppe « deux pairs par exercice » et a été corrigé dans
+le même commit que le cahier des charges.
+
+| Ce qui change | Avant | Après |
+|---|---|---|
+| Cardinalité `Exercice → Relecture` | `1` → `1` (Q6 : un seul relecteur) | `1` → `0..2` (deux affectations au plus) |
+| Unicité SQL | `UNIQUE (exercice_id)` | `UNIQUE (exercice_id, relecteur_id)` — deux pairs, jamais deux fois le même |
+| Note retenue | la note du relecteur | la **moyenne** des notes rendues, **provisoire** tant que `nbNotes < 2` |
+
+La contrainte n'est pas supprimée, elle est **relâchée d'un cran** : c'est elle qui continuera
+d'interdire qu'un même pair soit affecté deux fois au même exercice. `relecteur_id` reste
+nullable (H3) : un exercice sans pair éligible conserve son affectation vide.

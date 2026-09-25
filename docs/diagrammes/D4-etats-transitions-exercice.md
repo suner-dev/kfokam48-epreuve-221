@@ -9,13 +9,13 @@
 stateDiagram-v2
     [*] --> DEPOSE : EF3 dépôt du lien (201)
 
-    DEPOSE --> EN_ATTENTE_DE_RELECTURE : tirage aléatoire d'un pair présent<br/>Q7/RG7 (relecteur assigné)
-    DEPOSE --> EN_ATTENTE_SANS_RELECTEUR : aucun pair éligible présent<br/>H3 (relecteurId null)
-    EN_ATTENTE_SANS_RELECTEUR --> EN_ATTENTE_DE_RELECTURE : un pair devient éligible<br/>ré-attribution lors d'une nouvelle présence
+    DEPOSE --> EN_ATTENTE_DE_RELECTURE : tirage aléatoire de deux pairs présents distincts<br/>Q7/RG7 + RG20 (enveloppe étape 3)
+    DEPOSE --> EN_ATTENTE_SANS_RELECTEUR : moins de deux pairs éligibles présents<br/>H3 (relecteurId null) — un seul pair disponible : une seule affectation
+    EN_ATTENTE_SANS_RELECTEUR --> EN_ATTENTE_DE_RELECTURE : un pair devient éligible<br/>ré-attribution lors d'une nouvelle présence, jusqu'à deux
 
     EN_ATTENTE_DE_RELECTURE --> EN_ATTENTE_DE_RELECTURE : EF9/RG12 remplacement du lien<br/>tant que commenceeAt est null
     EN_ATTENTE_DE_RELECTURE --> EN_ATTENTE_DE_RELECTURE : EF16/RG18 début de relecture<br/>le lien devient non remplaçable
-    EN_ATTENTE_DE_RELECTURE --> RELU : EF5 relecture rendue<br/>note 0..20 + commentaire, RG8
+    EN_ATTENTE_DE_RELECTURE --> RELU : EF5 relecture rendue<br/>note 0..20 + commentaire, RG8<br/>**EF17/RG20 : la note retenue est la moyenne des deux ;**<br/>**provisoire tant qu'un seul des deux pairs a rendu**
 
     RELU --> RELU : EF10/RG9 correction de la note<br/>session non clôturée, exercice toujours RELU
     RELU --> RELU_VERROUILLE : clôture de session<br/>lecture seule
@@ -56,3 +56,22 @@ stateDiagram-v2
 > attribué, `EN_ATTENTE_SANS_RELECTEUR` sinon ; la clôture transforme les exercices encore en
 > attente en `EN_ATTENTE_VERROUILLE` et les exercices relus en `RELU_VERROUILLE`. La fin seule
 > (`finAt`) ne change pas le statut de l'exercice : elle bloque seulement l'auto-marquage.
+
+---
+
+## Révision 2.0 — après l'enveloppe de l'étape 3 (25/09/2026)
+
+Ce diagramme **devient faux** : l'état `RELU` n'était atteignable qu'après **une** relecture rendue.
+Il l'est désormais après la première des deux, mais la note affichée est alors **provisoire**.
+
+| Ce qui change | Avant | Après |
+|---|---|---|
+| Assignation au dépôt | 1 pair | **2 pairs distincts** (ou 1, ou 0 si moins de candidats éligibles) |
+| Passage à `RELU` | 1re note rendue | 1re **ou** 2e note rendue |
+| Note retenue | la note du relecteur | **moyenne des notes rendues** |
+| Mention provisoire | inexistante | `provisoire = true` tant que `nbNotes < 2` |
+
+Le passage à `RELU` reste le même événement observable : c'est la **valeur** de la note qui devient
+provisoire, pas l'état de l'exercice. C'est pourquoi aucun nouvel état n'a été introduit — un
+`RELU_PROVISOIRE` aurait fait dépendre l'état d'un compteur, alors que la donnée existe déjà dans
+la réponse de l'API.
