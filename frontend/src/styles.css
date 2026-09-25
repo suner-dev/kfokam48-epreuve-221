@@ -425,44 +425,6 @@ a:hover {
 }
 
 /* --------------------------------------------------------------------------
-   5. Pont de compatibilite
-   Les trois ecrans sont migres vers le design system dans #60, #61 et #62.
-   D'ici la, leurs couleurs d'origine (texte #102a43, cartes blanches) restent
-   declarees dans leurs propres CSS : sans ce pont elles seraient illisibles
-   sur le fond sombre. Chaque bloc disparait a la migration de son ecran.
-   -------------------------------------------------------------------------- */
-app-trainer-page .page,
-app-student-page .page,
-app-reviewer-page .page {
-  color: #1e293b;
-  background: rgba(248, 249, 255, 0.92);
-  border-radius: var(--kf-radius-lg);
-  padding: var(--kf-space-5);
-  box-shadow: var(--kf-shadow-lg);
-}
-
-/* --------------------------------------------------------------------------
-   6. Reduced motion
-   Regle d'accessibilite : plus aucune animation ni transition, les etats
-   finaux restent identiques pour que rien ne devienne illisible.
-   -------------------------------------------------------------------------- */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-
-  .kf-aurora__blob {
-    animation: none !important;
-    opacity: 0.4;
-  }
-}
-
-/* --------------------------------------------------------------------------
    5. Barre de navigation en pilules
    Partagee : la meme Pastille sert la coquille et les filtres d'ecran, dont
    les filtres d'etat (par exemple le filtre du tableau) doivent avoir le meme
@@ -552,3 +514,42 @@ app-reviewer-page .page {
   transform: scale(1.12);
 }
 
+
+/* --------------------------------------------------------------------------
+   6. Pont de compatibilite
+   Les trois ecrans sont migres vers le design system dans #60, #61 et #62.
+   D'ici la, leurs couleurs d'origine (texte #102a43, cartes blanches) restent
+   declarees dans leurs propres CSS : sans ce pont elles seraient illisibles
+   sur le fond sombre. Chaque bloc disparait a la migration de son ecran.
+   -------------------------------------------------------------------------- */
+app-trainer-page .page,
+app-student-page .page,
+app-reviewer-page .page {
+  color: #1e293b;
+  background: rgba(248, 249, 255, 0.92);
+  border-radius: var(--kf-radius-lg);
+  padding: var(--kf-space-5);
+  box-shadow: var(--kf-shadow-lg);
+}
+
+
+/* --------------------------------------------------------------------------
+   7. Reduced motion
+   Regle d'accessibilite : plus aucune animation ni transition, les etats
+   finaux restent identiques pour que rien ne devienne illisible.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .kf-aurora__blob {
+    animation: none !important;
+    opacity: 0.4;
+  }
+}
