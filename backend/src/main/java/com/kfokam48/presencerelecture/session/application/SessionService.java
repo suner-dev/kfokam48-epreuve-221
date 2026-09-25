@@ -2,8 +2,10 @@ package com.kfokam48.presencerelecture.session.application;
 
 import com.kfokam48.presencerelecture.common.exception.ApiException;
 import com.kfokam48.presencerelecture.promotion.application.PromotionService;
+import com.kfokam48.presencerelecture.session.api.CloseSessionResponse;
 import com.kfokam48.presencerelecture.session.api.CreateSessionRequest;
 import com.kfokam48.presencerelecture.session.api.CreatedSessionResponse;
+import com.kfokam48.presencerelecture.session.api.FinishSessionResponse;
 import com.kfokam48.presencerelecture.session.domain.SessionCours;
 import com.kfokam48.presencerelecture.session.domain.SessionCoursRepository;
 import java.security.SecureRandom;
@@ -44,6 +46,37 @@ public class SessionService {
                 ouvertureAt.plus(15, ChronoUnit.MINUTES)
         ));
         return new CreatedSessionResponse(session.getId(), session.getCode(), session.getOuvertureAt(), session.getExpirationAt());
+    }
+
+    public SessionCours require(Long id) {
+        return repository.findById(id).orElseThrow(() -> new ApiException(
+                HttpStatus.NOT_FOUND,
+                "SESSION_INCONNUE",
+                "La session demandée n'existe pas."
+        ));
+    }
+
+    public FinishSessionResponse finish(Long id) {
+        SessionCours session = require(id);
+        if (session.getClotureAt() != null) {
+            throw new ApiException(HttpStatus.GONE, "SESSION_CLOTUREE", "La session est clôturée.");
+        }
+        if (session.getFinAt() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "SESSION_DEJA_TERMINEE", "La session est déjà terminée.");
+        }
+        Instant now = clock.instant();
+        session.finish(now);
+        return new FinishSessionResponse(session.getId(), session.getFinAt());
+    }
+
+    public CloseSessionResponse close(Long id) {
+        SessionCours session = require(id);
+        if (session.getClotureAt() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "SESSION_DEJA_CLOTUREE", "La session est déjà clôturée.");
+        }
+        Instant now = clock.instant();
+        session.close(now, now);
+        return new CloseSessionResponse(session.getId(), session.getFinAt(), session.getClotureAt());
     }
 
     public SessionCours requireByCode(String code) {
