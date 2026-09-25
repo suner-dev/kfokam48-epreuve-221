@@ -20,7 +20,7 @@
 | URL du dépôt public | `https://github.com/suner-dev/kfokam48-epreuve-221` |
 | Branche | `main` |
 | Hash du jalon `[JALON] v1.0` (40 caractères) | `f25f4b5bcfbd0a137d2f3ad025c522d01a08cfb5` |
-| Hash de `main` après l'étape 3 | voir `git log -1 origin/main` — l'étape 3 est postérieure au jalon v1.0 et donne lieu à ses propres commits |
+| Commit le plus récent sur `main` | l'étape 3 est postérieure au jalon v1.0 et donne lieu à ses propres commits ; c'est pourquoi le hash déclaré est celui du jalon |
 | Contenu exact de ce jalon | version finale : `CHANGELOG.md`, journal des étapes 3, 4 et 6, backlog trié |
 | Commit au-dessus du jalon | un seul, purement documentaire : l'ajout de ce `SOUMISSION.md`. Il ne touche ni au code, ni au contrat, ni aux tests, et ne modifie pas le jalon. |
 
@@ -51,9 +51,11 @@ donc pas de hash à déclarer. L'étape 5 ne compte pas dans le barème.
   session, la présence manuelle du formateur, l'anonymat du relecteur, la correction de note et le
   remplacement de lien, la correction de note avant clôture, l'anti-devinette, la relecture par
   deux pairs avec moyenne et mention provisoire, et le diagramme D4 (bonus).
-- **Ce qui marche et qui est prouvé** : 30 tests unitaires et 34 tests d'intégration, tous verts
-  sur `./backend/mvnw clean verify`, plus un relevé des 17 appels manuels du contrat rejoué sur
-  l'application Docker et consigné dans `docs/APPELS_MANUELS.md`.
+- **Ce qui marche et qui est prouvé** : **35 tests unitaires et 37 tests d'intégration** backend,
+  tous verts sur `./backend/mvnw clean verify`, et **53 tests Angular** sur 14 fichiers avec un
+  build de production vert ; plus un relevé des 17 appels manuels du contrat rejoué sur
+  l'application Docker après le changement de l'enveloppe et consigné dans
+  `docs/APPELS_MANUELS.md`.
 - **Le changement de besoin de l'enveloppe est livré** : deux pairs par exercice, moyenne des deux
   notes, mention provisoire tant qu'un seul a rendu. Règle Q6 annulée et remplacée par RG20,
   migration V4 ajoutée, moyenne calculée par l'API et jamais recalculée dans le navigateur.
@@ -84,7 +86,7 @@ donc pas de hash à déclarer. L'étape 5 ne compte pas dans le barème.
 - [x] `git status` propre, tout est poussé
 - [x] `README` testé depuis un dossier vide, sans `.env` préalable
 - [x] `JOURNAL.md` et `CAHIER_DES_CHARGES.md` présents dans `docs/`
-- [x] Les trois jalons poussés et dans le bon ordre
+- [x] Les quatre jalons poussés et dans le bon ordre (`depart`, `analyse`, `v0.1`, `v1.0`)
 - [x] Aucun `target/`, `node_modules/` ou `dist/` suivi ; aucun secret dans l'historique
 
 ## Déclaration
