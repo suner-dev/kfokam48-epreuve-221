@@ -1,11 +1,13 @@
 package com.kfokam48.presencerelecture;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kfokam48.presencerelecture.exercice.api.CreateExerciseRequest;
+import com.kfokam48.presencerelecture.presence.api.MarkPresenceRequest;
 import com.kfokam48.presencerelecture.session.api.CreateSessionRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +52,37 @@ class ExerciseControllerIT {
                         .content(body))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("EXERCICE_DEJA_DEPOSE"));
+    }
+
+    @Test
+    void affecteUnRelecteurPresentEtReaffecteUnExerciceEnAttente() throws Exception {
+        String sessionBody = objectMapper.writeValueAsString(new CreateSessionRequest("Session affectation", 1L));
+        String created = mockMvc.perform(post("/api/sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(sessionBody))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long sessionId = objectMapper.readTree(created).get("id").asLong();
+        String code = objectMapper.readTree(created).get("code").asText();
+
+        String exerciseBody = objectMapper.writeValueAsString(new CreateExerciseRequest(
+                sessionId, 1L, "https://example.test/exercice/affectation"
+        ));
+        mockMvc.perform(post("/api/exercices")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(exerciseBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.statut").value("EN_ATTENTE_SANS_RELECTEUR"));
+
+        mockMvc.perform(post("/api/presences")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new MarkPresenceRequest(code, 2L))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/sessions/{id}/exercices", sessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].relecteurId").value(2))
+                .andExpect(jsonPath("$[0].relectureId").isNumber());
     }
 
     @Test

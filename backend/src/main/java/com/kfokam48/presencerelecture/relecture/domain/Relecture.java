@@ -40,4 +40,8 @@ public class Relecture {
     public Long getRelecteurId() {
         return relecteurId;
     }
+
+    public void assign(Long relecteurId) {
+        this.relecteurId = relecteurId;
+    }
 }

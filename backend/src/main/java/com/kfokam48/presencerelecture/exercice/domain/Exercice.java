@@ -57,4 +57,8 @@ public class Exercice {
     public Instant getDeposeAt() {
         return deposeAt;
     }
+
+    public void setStatut(StatutExercice statut) {
+        this.statut = statut;
+    }
 }
