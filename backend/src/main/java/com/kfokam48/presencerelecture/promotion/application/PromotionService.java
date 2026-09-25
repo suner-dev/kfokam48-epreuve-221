@@ -22,8 +22,17 @@ public class PromotionService {
     }
 
     public Promotion require(Long id) {
+        return require(id, HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Le contrat n'autorise que 400 sur les écritures imposées : quand le promotionId arrive
+     * dans le corps de la requête (POST /api/sessions), l'absence est une erreur de requête (400),
+     * pas une ressource introuvable (404).
+     */
+    public Promotion require(Long id, HttpStatus statutAbsence) {
         return repository.findById(id).orElseThrow(() -> new ApiException(
-                HttpStatus.NOT_FOUND,
+                statutAbsence,
                 "PROMOTION_INCONNUE",
                 "La promotion demandée n'existe pas."
         ));

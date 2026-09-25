@@ -51,7 +51,7 @@ public class ExerciseService {
 
     public ExerciseCreatedResponse create(CreateExerciseRequest request) {
         validateUri(request.lien());
-        SessionCours session = sessionService.require(request.sessionId());
+        SessionCours session = sessionService.require(request.sessionId(), HttpStatus.BAD_REQUEST);
         if (session.getClotureAt() != null) {
             throw new ApiException(HttpStatus.GONE, "SESSION_CLOTUREE", "La session est clôturée.");
         }
