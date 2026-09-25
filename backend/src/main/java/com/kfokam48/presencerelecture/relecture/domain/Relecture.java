@@ -44,4 +44,22 @@ public class Relecture {
     public void assign(Long relecteurId) {
         this.relecteurId = relecteurId;
     }
+
+    public Integer getNote() {
+        return note;
+    }
+
+    public String getCommentaire() {
+        return commentaire;
+    }
+
+    public Instant getRendueAt() {
+        return rendueAt;
+    }
+
+    public void render(Integer note, String commentaire, Instant rendueAt) {
+        this.note = note;
+        this.commentaire = commentaire;
+        this.rendueAt = rendueAt;
+    }
 }
