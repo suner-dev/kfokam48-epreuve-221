@@ -61,10 +61,12 @@ attribuée** à cet étudiant.
 - Ouverture, **fin**, clôture de session et code de présence à expiration (Q2, trous H1/H7).
 - Marquage de présence par code, présence ajoutée par le formateur (Q14), unicité d'une présence.
 - Dépôt du lien d'un exercice, remplacement tant que la relecture n'a pas commencé (Q12, Q13).
-- Assignment **automatique** d'un relecteur (tirage au hasard parmi les présents, jamais soi-même)
-  (Q6, Q7, Q5).
+- Assignment **automatique** de **deux relecteurs distincts** (tirage au hasard parmi les présents,
+  jamais soi-même, jamais deux fois le même pair) — **Q6 annulée par l'enveloppe, Q7 et Q5 inchangées**.
 - Début, rendu d'une relecture (note entière 0–20 + commentaire) et **correction avant clôture** (Q9, Q10).
-- Consultation par l'auteur de la note et du commentaire reçus, sans identité du relecteur (Q8).
+- Consultation par l'auteur de la **moyenne des deux notes** reçues et de leurs commentaires,
+  sans identité des relecteurs (Q8), la valeur étant **provisoire** tant que les deux pairs n'ont pas
+  rendu (**EF17**, enveloppe étape 3).
 - Tableau du formateur agrégé et détails par session : présence/source (Q14, Q16), exercices dont la
   relecture reste due (Q11), relectures dues par étudiant (Q16).
 - 3 écrans frontend (formateur / étudiant / relecteur) (F2) ; données de démonstration au démarrage.
@@ -82,6 +84,32 @@ attribuée** à cet étudiant.
   temps d'une journée, non demandés.
 - **Anti-cheat avancé au-delà du blocage 2 min** (Q4) : hors scope, seul le blocage simple est fait.
 
+**Ce que l'enveloppe m'a fait sortir du périmètre pour absorber les deux relecteurs, et pourquoi :**
+
+L'enveloppe de l'étape 3 arrive **après** `[JALON] v0.1` et transforme Q6, qui touche la base, le
+contrat et le frontend. Un Must tard ne se rajoute pas à un périmètre déjà tenu ; il faut donc
+**sortir** quelque chose. J'ai choisi de sacrifier les issues **#58, #59 et #60** (coquille
+applicative : en-tête « verre », bibliothèque de composants, refonte de l'écran formateur —
+filtre, compteurs, rafraîchissement, raccourcis). Motifs, dans l'ordre :
+
+1. **Elles ne changent aucun comportement métier.** Le sujet précise que « le rendu visuel n'est
+   pas noté » et que le CSS vaut zéro point. Les sacrifier ne retire donc aucun point de
+   conformité ni de produit.
+2. **Elles ne rassurent le correcteur que sur l'apparence, pas sur l'exactitude.** Un
+   tableau au design soigné mais dont la moyenne ne vient pas de l'API serait un piège ; la
+   consigne 11.2 est explicite sur ce point et elle est respectée.
+3. **Elles sont de l'ordre de l'étape 4 au sens du sujet** (« stories restantes au mieux »), tandis que
+   l'enveloppe est, elle, notée à l'étape 3 (10 points sur « conduite du changement »).
+4. **Elles ne sont pas des résultats utilisateurs déjà livrés** : elles n'ont ni branche, ni
+   commit, ni PR. Les abandonner ne supprime donc aucun travail déjà poussé et l'historique reste
+   lisible.
+
+Ce que je **ne** sacrifie pas, et pourquoi : le blocage anti-devinette (EF12), la correction de
+note et le remplacement de lien (EF9/EF10) et le diagramme D4. Les trois sont déjà **mergés et
+vérifiés** ; les abandonner laisserait des `PUT` et un `statut` annoncés mais non livrés, ce qui
+est précisément le défaut que l'issue #50 a sanctionné. Un périmètre réduit doit être **annoncé**,
+pas seulement pratiqué : c'est écrit ici, au backlog et au journal.
+
 ## 4. Exigences fonctionnelles
 
 Priorités **Must / Should / Could**. Un critère se lit « quand … alors … ».
@@ -91,8 +119,9 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 | **EF1** | Le formateur ouvre une session et obtient un code de présence | Quand j'envoie `{titre, promotionId}`, alors je reçois `201 {id, code, ouvertureAt, expirationAt}` avec `expirationAt = ouvertureAt + 15 min` | Must |
 | **EF2** | L'étudiant marque sa présence avec le code | Quand j'envoie un `{code, etudiantId}` valide, avant expiration et avant la fin de session, alors `201 {id, sessionId, etudiantId, source=ETUDIANT}` et la présence apparaît dans le détail de la session | Must |
 | **EF3** | L'étudiant dépose le lien de son exercice pour une session | Quand j'envoie `{sessionId, etudiantId, lien}` valide avant la clôture, alors `201`, une seule affectation est créée et le statut indique l'attente de relecture ; après la fin, le dépôt reste autorisé jusqu'à la clôture | Must |
-| **EF4** | Le système affecte un pair à chaque exercice | Quand un exercice est déposé et qu'au moins un étudiant présent à cette session est différent de l'auteur, alors le système en choisit **au hasard** exactement un et crée l'affectation ; sinon l'exercice reste visible en attente sans relecteur | Must |
-| **EF5** | Le relecteur rend une note et un commentaire | Quand j'envoie `{note∈[0,20] entier, commentaire}` sur ma relecture assignée non encore rendue et avant la clôture, alors `200` et la note est comptée dans la moyenne de l'auteur | Must |
+| **EF4** | Le système affecte **deux pairs distincts** à chaque exercice | Quand un exercice est déposé et que des étudiants présents à cette session, différents de l'auteur, sont disponibles, alors le système en choisit **au hasard deux distincts** et crée deux affectations ; s'il n'y a qu'un candidat, une seule affectation est créée et l'exercice reste visible en attente ; s'il n'y en a aucun, l'exercice reste `EN_ATTENTE_SANS_RELECTEUR` | Must |
+| **EF17** | L'auteur voit la **moyenne** de ses deux notes, marquée provisoire tant qu'elles ne sont pas toutes deux rendues | Quand l'auteur consulte `GET /api/etudiants/{id}/relectures-recues`, alors chaque exercice y expose une entrée avec `note` = moyenne des notes rendues, `nbNotes` = nombre de pairs ayant rendu, et `provisoire` = `true` tant que `nbNotes < 2` ; l'API calcule la moyenne, le frontend ne la recalcule pas | Must |
+| **EF5** | Le relecteur rend une note et un commentaire | Quand j'envoie `{note∈[0,20] entier, commentaire}` sur **l'une de mes** relectures assignées non encore rendue et avant la clôture, alors `200` et la note est comptée dans la moyenne de l'auteur ; un pair ne rend qu'une seule fois, sur une affectation qui lui est propre | Must |
 | **EF6** | Le formateur consulte le tableau par promotion | Quand j'appelle `GET /api/tableau?promotionId=`, alors je reçois les compteurs imposés ; les endpoints de détail donnent en plus présence/source par session et exercices dont la relecture est due (Q11/Q14/Q16) | Must |
 | **EF7** | Un exercice possède au plus une affectation de relecture | Quand le dépôt ou une réévaluation traite de nouveau le même exercice, alors aucune seconde ligne `Relecture` n'est créée (`exerciceId` unique) | Must |
 | **EF8** | Le formateur ajoute une présence à la main | Quand le formateur marque la présence d'un étudiant avant clôture, alors `201` contient `source=FORMATEUR` et le détail de la session expose cette source | Must |
@@ -101,7 +130,7 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 | **EF11** | Le formateur clôt une session | Quand j'appelle la clôture, alors `clotureAt` est fixé, `finAt` l'est aussi si elle était encore ouverte, et toute écriture liée est ensuite refusée | Must |
 | **EF12** | Anti-devinette des codes de présence | À partir de la cinquième saisie invalide faite sous l'`etudiantId` déclaré, alors les nouvelles tentatives sont refusées avec `400 TROP_ESSAIS` pendant 120 secondes | Should |
 | **EF13** | L'étudiant choisit son identité dans une liste | Quand j'ouvre l'écran étudiant, alors une liste d'étudiants de la promotion m'est proposée, sans mot de passe | Must |
-| **EF14** | Confidentialité de l'identité du relecteur | Quand l'auteur consulte `GET /api/etudiants/{id}/relectures-recues`, alors il reçoit note et commentaire mais aucun nom ni identifiant de relecteur | Must |
+| **EF14** | Confidentialité de l'identité des relecteurs | Quand l'auteur consulte `GET /api/etudiants/{id}/relectures-recues`, alors il reçoit la note retenue, les commentaires et le nombre de pairs ayant rendu, mais **aucun** nom ni identifiant de relecteur — pour aucun des deux | Must |
 | **EF15** | Le formateur termine une session | Quand j'appelle la fin d'une session ouverte, alors `finAt` est fixé, l'auto-marquage cesse, mais le dépôt et la relecture restent possibles jusqu'à la clôture | Must |
 | **EF16** | Le relecteur commence une affectation attribuée | Quand j'appelle `POST /api/relectures/{id}/debut`, alors `commenceeAt` est fixé et le remplacement du lien devient impossible jusqu'à la clôture | Must |
 
@@ -125,8 +154,8 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 | **RG2** | L'auto-marquage est permis seulement avant `finAt` ; une fin de session l'interdit sans clore les dépôts | Q3 + hypothèse H7 |
 | **RG3** | Un étudiant ne peut marquer sa présence **qu'une fois** par session (unicité `(sessionId, etudiantId)`) → sinon `409 DEJA_PRESENT` | contrat imposé `409 DEJA_PRESENT` |
 | **RG4** | À partir de la 5e saisie invalide faite sous un `etudiantId` déclaré, bloquer les nouveaux essais pendant **120 s**, puis remettre le compteur à zéro | Q4 + hypothèses H4/H5 |
-| **RG5** | Un étudiant **ne peut jamais** relire son propre exercice → `403 AUTO_RELECTURE` | Q5 |
-| **RG6** | **Un seul relecteur attribué au plus** par exercice | Q6 |
+| **RG5** | Un étudiant **ne peut jamais** relire son propre exercice → `403 AUTO_RELECTURE` ; l'affectation automatique n'éligit donc jamais l'auteur, pour aucun des deux pairs | Q5 |
+| **RG6** | ~~**Un seul relecteur attribué au plus** par exercice~~ — **ANNULÉE par l'enveloppe de l'étape 3**, remplacée par **RG20**. La garantie la plus forte qui subsiste est `UNIQUE (exercice_id, relecteur_id)` : deux affectations par exercice, jamais deux fois le même pair | Q6 (annulée) |
 | **RG7** | Le relecteur est choisi **par le système, au hasard, parmi les étudiants présents à cette session**, différents de l'auteur | Q7 |
 | **RG8** | La note est un **entier de 0 à 20** inclus → sinon `400 NOTE_INVALIDE` | Q9 |
 | **RG9** | Une relecture peut être **corrigée tant que la session n'est pas clôturée** ; l'exercice reste `RELU` | Q10 (arbitrage §7 C1) |
@@ -140,6 +169,7 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 | **RG17** | `finAt` et `clotureAt` sont deux événements distincts ; la clôture directe termine aussi la session si nécessaire | hypothèse H7 |
 | **RG18** | Le premier `POST /api/relectures/{id}/debut` ou la première soumission de note fixe `commenceeAt` ; l'opération est idempotente dans son effet | Q13 + hypothèse H8 |
 | **RG19** | `relecturesEnAttente` compte les affectations dues à l'étudiant ; les exercices sans pair relèvent d'un indicateur Q11 distinct | Q11/Q16 + hypothèse H10 |
+| **RG20** | **Deux affectations de relecture au plus par exercice, et deux pairs distincts** ; la note retenue est la **moyenne des notes rendues** ; elle est **provisoire** tant que les deux pairs n'ont pas rendu | enveloppe étape 3 (annule RG6 / Q6) |
 
 ## 7. Zones d'ombre, hypothèses et contradictions tranchées
 
@@ -148,6 +178,8 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 | Réponses en conflit | Ce que j'ai choisi | Pourquoi |
 |---|---|---|
 | **Q10** (« un relecteur peut **corriger** sa note tant que le formateur n'a pas clôturé ») **vs Q15** (« la note est **définitive** une fois envoyée, il ne peut plus y revenir ») | **Je retiens Q10** (correction possible avant clôture) | Q10 est une règle **détaillée et conditionnée** ; Q10 et Q12 donnent explicitement une borne temporelle par la clôture. Q11 confirme qu'un exercice peut rester non relu, sans définir à lui seul la clôture. Q15 exprime une intention générale sans mécanisme ni échéance. **Conséquence API :** `POST /api/relectures/{id}` reste le rendu initial et renvoie `409` si déjà rendue ; `PUT /api/relectures/{id}` corrige jusqu'à la clôture. L'exercice demeure `RELU` après correction. |
+
+**Contradiction secondaire, créée par l'enveloppe de l'étape 3 :** Q6 (« un seul relecteur ») est annulée par la demande client, mais **Q8** (« l'auteur voit note et commentaire, pas le nom du relecteur ») ne mentionne qu'un relecteur au singulier, et **Q9** (« note sur 20, entiers ») parle d'une note, non d'une moyenne. Le choix : **Q8 et Q9 s'appliquent à chacune des deux notes prises isolément**, et c'est l'API qui les combine en une moyenne ; l'anonymat ne se relâche d'aucun cran, il s'applique deux fois. Justification : ces trois réponses ont été écrites avant la demande des deux pairs ; les affaiblir serait les trahir, alors que « la note retenue » est explicitement une moyenne.
 
 ### 7.2 Trous que personne n'a comblés (le sujet annonce ≥ 1 trou)
 
@@ -163,6 +195,8 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 | **H8 — Que signifie « commencé » pour Q13 ?** | Le premier appel explicite de démarrage ou la première soumission de note fixe `commenceeAt` ; le remplacement du lien est alors refusé, même avant la note. | `POST /api/relectures/{id}/debut`, **EF9/EF16, RG12/RG18**. | Respecte littéralement Q13 au lieu de le confondre avec « note non rendue ». |
 | **H9 — Q8 masque-t-il seulement le nom ou aussi l'identifiant du relecteur ?** | Masquer les deux dans les réponses destinées à l'auteur ; ne pas exposer l'auteur au relecteur dans la liste des tâches. | **EF14/RG14** ; endpoint `/relectures-recues` sans `relecteurId`. | Confidentialité renforcée, hypothèse locale explicite. |
 | **H10 — Une affectation sans relecteur doit-elle créer une ligne de relecture et qui la compte ?** | Créer une seule affectation par exercice avec `relecteurId` nullable ; `relecturesEnAttente` du tableau impose compte seulement les affectations attribuées à l'étudiant. | Distinguer l'indicateur Q11 (exercices en attente) de l'indicateur Q16 (tâches dues à l'étudiant). | Évite de faire croire qu'un exercice sans pair est dû à quelqu'un. |
+  | **H13 — Que devient Q6, annulée par l'enveloppe (« deux pairs, moyenne des deux ») ?** La règle « un seul relecteur par exercice » est annulée et remplacée par « **deux affectations au plus, jamais deux fois le même pair** ». La garantie SQL qui portait Q6 (`UNIQUE (exercice_id)`) devient `UNIQUE (exercice_id, relecteur_id)`. | Migration `V4` : l'unicité est relâchée d'un cran, jamais supprimée. Deux affectations restent **bornées**, donc la moyenne reste définie même quand un seul pair a rendu. | **RG6 (annulée), RG20, EF4, EF17** ; la mention « l'auteur de Q6 » disparaît au profit de la moyenne. |
+  | **H14 — « la note retenue est la moyenne des deux » : que vaut la moyenne quand un seul pair a rendu ?** Le client dit « on affiche sa note en attendant, mais marquée comme provisoire ». Donc : la moyenne porte sur les notes **rendues** (1 ou 2), et `provisoire` vaut `true` dès que `nbNotes < 2`. | `note` = moyenne des notes rendues, `nbNotes` = nombre de pairs ayant rendu, `provisoire` = `nbNotes < 2`. Le formateur voit la même information dans `GET /api/sessions/{id}/exercices`, où chaque affectation expose son état. | **EF17, RG20** ; `GET /api/etudiants/{id}/relectures-recues` et le tableau du formateur restent cohérents entre eux. |
 | **H11 — Quels codes d’erreur sont approuvés pour la v0.1 ?** | Les codes métier et techniques sont figés dans `api/contrat.yaml` et contrôlés par `ApiErrorContractIT`. | Les services n’émettent que des codes déclarés ; les réponses HTTP gardent leur statut contractuel. | La PR #34 verrouille le contrat et le format `{code,message}`. |
 | **H12 — Le démarrage et la liste des tâches sont-ils dans le périmètre v0.1 ?** | `POST /api/relectures/{id}/debut` et `GET /api/relectures/a-faire?etudiantId=` sont des Must. | Les deux opérations sont livrées par #12 et ne repoussent pas les corrections EF9/EF10 de #14. | La première soumission fixe aussi `commenceeAt` selon RG18. |
 
@@ -243,4 +277,4 @@ produit parfait sans historique.
 |---|---|---|
 | 1 | 25/09/2026 | Version initiale — analyse d'avant-code (14 EF, 16 RG, 1 contradiction Q10/Q15 tranchée, 6 zones d'ombre/hypothèses dont le trou « clôture »). |
 | 1.1 | 25/09/2026 | Audit de cohérence : fin de session distincte de la clôture (H7), démarrage de relecture distinct de la note rendue (H8), anonymat et compteurs Q11/Q16 précisés (H9/H10), priorité des dépendancesMust revue, endpoints de détail et backlog corrigés. |
-| _2 (à venir)_ | _après Étape 3_ | _Mettre à jour suite à l'enveloppe (bug + changement de besoin) : sections impactées et diagrammes D2/D3. Le sujet rend une partie de l'analyse fausse → correction obligatoire et tracée ici._ |
+| **2.0** | **25/09/2026 — après l'enveloppe (étape 3)** | **Version 2.0, consequences directes du changement de besoin de l'enveloppe (« deux pairs par exercice, moyenne des deux, provisoire si un seul a rendu »).** Q6 est **annulée** : la regle « un seul relecteur par exercice » devient « deux relecteurs distincts au plus », avec moyenne des notes rendues et mention provisoire. Sections 3, 4 (EF4, EF5, EF14, EF17), 6 (RG5, RG6, RG20), 7.1, 7.2 (H13, H14) et 8 modifiees ; diagrammes **D2** (cardinalite Relecture 1..N) et **D4** (etats de relecture) corriges. D1 et D3 ne sont pas touches : ni les acteurs ni le scenario de presence ne changent. Le re-priorisation est ecrite en section 3 et au backlog. |

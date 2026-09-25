@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kfokam48.presencerelecture.exercice.api.CreateExerciseRequest;
 import com.kfokam48.presencerelecture.presence.api.MarkPresenceRequest;
@@ -69,20 +70,25 @@ class EtudiantControllerIT {
         String details = mockMvc.perform(get("/api/sessions/{id}/exercices", sessionId))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        long reviewId = objectMapper.readTree(details).get(0).get("relectureId").asLong();
+        // L'exercice porte deux affectations depuis l'enveloppe ; on rend la première.
+        JsonNode affectations = objectMapper.readTree(details).get(0).get("relecteurs");
+        long reviewId = affectations.get(0).get("relectureId").asLong();
 
         mockMvc.perform(post("/api/relectures/{id}", reviewId)
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content("{\"note\":15,\"commentaire\":\"Anonyme\"}"))
                 .andExpect(status().isOk());
 
+        // Un seul des deux pairs a rendu : la note s'affiche, mais elle est provisoire (EF17/RG20).
         mockMvc.perform(get("/api/etudiants/{id}/relectures-recues", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].exerciceId").value(exerciseId))
                 .andExpect(jsonPath("$[0].sessionId").value(sessionId))
                 .andExpect(jsonPath("$[0].lienExercice").value("https://example.test/exercice/anonymat"))
-                .andExpect(jsonPath("$[0].note").value(15))
+                .andExpect(jsonPath("$[0].note").value(15.0))
                 .andExpect(jsonPath("$[0].commentaire").value("Anonyme"))
+                .andExpect(jsonPath("$[0].nbNotes").value(1))
+                .andExpect(jsonPath("$[0].provisoire").value(true))
                 .andExpect(jsonPath("$[0].relecteurId").doesNotExist())
                 .andExpect(jsonPath("$[0].relecteur").doesNotExist());
     }
