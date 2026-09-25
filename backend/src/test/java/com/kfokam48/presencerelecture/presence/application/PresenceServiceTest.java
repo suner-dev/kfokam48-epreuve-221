@@ -13,6 +13,7 @@ import com.kfokam48.presencerelecture.etudiant.application.EtudiantService;
 import com.kfokam48.presencerelecture.etudiant.domain.Etudiant;
 import com.kfokam48.presencerelecture.exercice.application.ExerciseService;
 import com.kfokam48.presencerelecture.presence.api.ManualPresenceRequest;
+import com.kfokam48.presencerelecture.presence.api.PresenceResponse;
 import com.kfokam48.presencerelecture.presence.api.MarkPresenceRequest;
 import com.kfokam48.presencerelecture.presence.domain.Presence;
 import com.kfokam48.presencerelecture.presence.domain.PresenceRepository;
@@ -31,9 +32,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 /**
- * B6 — Test unitaire métier (consigne 13.1) : la règle est démontrée sur la borne exacte,
- * sans contexte Spring, sans base de données et sans appel HTTP.
- * RG1 expiration, RG2 fin de session, RG3 doublon, RG13 source formateur, RG15 clôture.
+ * B6 — présence manuelle du formateur (RG13, RG15) et orchestration du comptage
+ * anti-devinette (EF12).
+ *
+ * <p>Depuis l'issue #67, {@link PresenceService} n'est plus transactionnel : il orchestre
+ * l'écriture de la présence et le comptage anti-devinette, qui doivent se succéder et non
+ * s'imbriquer, faute de quoi deux connexions du pool sont retenues en même temps.
  */
 @ExtendWith(MockitoExtension.class)
 class PresenceServiceTest {
@@ -58,79 +62,8 @@ class PresenceServiceTest {
     @Mock
     private CodeAttemptService codeAttemptService;
 
-    @Test
-    void marqueLaPresenceALaDerniereSecondeAvantLexpiration() {
-        PresenceService service = serviceAt(EXPIRATION.minusSeconds(1));
-        SessionCours session = session();
-        when(sessionService.requireByCode(CODE)).thenReturn(session);
-        when(etudiantService.require(ETUDIANT_ID, PROMOTION_ID)).thenReturn(etudiant());
-        when(repository.findBySessionIdAndEtudiantId(any(), any())).thenReturn(Optional.empty());
-        when(repository.save(any(Presence.class))).thenAnswer(call -> call.getArgument(0));
-
-        service.mark(new MarkPresenceRequest(CODE, ETUDIANT_ID));
-
-        ArgumentCaptor<Presence> saved = ArgumentCaptor.forClass(Presence.class);
-        verify(repository).save(saved.capture());
-        assertThat(saved.getValue().getSource()).isEqualTo(SourcePresence.ETUDIANT);
-        assertThat(saved.getValue().getMarqueeAt()).isEqualTo(EXPIRATION.minusSeconds(1));
-        verify(exerciseService).assignPending(session.getId());
-    }
-
-    @Test
-    void refuseLeCodeAlinstantExactOuIlExpire() {
-        PresenceService service = serviceAt(EXPIRATION);
-        when(sessionService.requireByCode(CODE)).thenReturn(session());
-
-        assertErreur(() -> service.mark(new MarkPresenceRequest(CODE, ETUDIANT_ID)),
-                HttpStatus.GONE, "CODE_EXPIRE");
-        verify(codeAttemptService).registerFailure(ETUDIANT_ID);
-        verifyNoInteractions(repository, exerciseService);
-    }
-
-    @Test
-    void refuseLeCodeUneFoisLeDelaiDepasse() {
-        PresenceService service = serviceAt(EXPIRATION.plusSeconds(1));
-        when(sessionService.requireByCode(CODE)).thenReturn(session());
-
-        assertErreur(() -> service.mark(new MarkPresenceRequest(CODE, ETUDIANT_ID)),
-                HttpStatus.GONE, "CODE_EXPIRE");
-    }
-
-    @Test
-    void refuseLAutoMarquageDesQueLaSessionEstTermineeAlorsQueLeCodeCourtEncore() {
-        PresenceService service = serviceAt(EXPIRATION.minusSeconds(60));
-        SessionCours session = session();
-        session.finish(EXPIRATION.minusSeconds(120));
-        when(sessionService.requireByCode(CODE)).thenReturn(session);
-
-        assertErreur(() -> service.mark(new MarkPresenceRequest(CODE, ETUDIANT_ID)),
-                HttpStatus.GONE, "SESSION_TERMINEE");
-    }
-
-    @Test
-    void laClotureEstPrioritaireSurLexpirationEtSurLaFin() {
-        // Arbitrage §7 : une session à la fois expirée, terminée et clôturée renvoie SESSION_CLOTUREE.
-        PresenceService service = serviceAt(EXPIRATION.plusSeconds(60));
-        SessionCours session = session();
-        session.close(EXPIRATION.minusSeconds(120), EXPIRATION.plusSeconds(30));
-        when(sessionService.requireByCode(CODE)).thenReturn(session);
-
-        assertErreur(() -> service.mark(new MarkPresenceRequest(CODE, ETUDIANT_ID)),
-                HttpStatus.GONE, "SESSION_CLOTUREE");
-    }
-
-    @Test
-    void refuseUnePresenceDejaEnregistreePourLaMemeSession() {
-        PresenceService service = serviceAt(OUVERTURE.plusSeconds(60));
-        when(sessionService.requireByCode(CODE)).thenReturn(session());
-        when(etudiantService.require(ETUDIANT_ID, PROMOTION_ID)).thenReturn(etudiant());
-        when(repository.findBySessionIdAndEtudiantId(any(), any()))
-                .thenReturn(Optional.of(new Presence(null, null, SourcePresence.ETUDIANT, OUVERTURE)));
-
-        assertErreur(() -> service.mark(new MarkPresenceRequest(CODE, ETUDIANT_ID)),
-                HttpStatus.CONFLICT, "DEJA_PRESENT");
-        verify(repository, never()).save(any(Presence.class));
-    }
+    @Mock
+    private PresenceRecorder recorder;
 
     @Test
     void enregistreUnePresenceManuelleAvecLaSourceFormateurSansDemanderDeCode() {
@@ -159,9 +92,32 @@ class PresenceServiceTest {
         verifyNoInteractions(repository);
     }
 
+    @Test
+    void compteLEchecMemeQuandLEcritureDePresenceEstAnnulee() {
+        PresenceService service = serviceAt(EXPIRATION);
+        when(recorder.record(CODE, ETUDIANT_ID))
+                .thenThrow(new ApiException(HttpStatus.GONE, "CODE_EXPIRE", "Le code de présence a expiré."));
+
+        assertErreur(() -> service.mark(new MarkPresenceRequest(CODE, ETUDIANT_ID)),
+                HttpStatus.GONE, "CODE_EXPIRE");
+        verify(codeAttemptService).registerFailure(ETUDIANT_ID);
+        verify(codeAttemptService, never()).registerSuccess(any());
+    }
+
+    @Test
+    void remetLeCompteurAZeroApresUnMarquageReussi() {
+        PresenceService service = serviceAt(EXPIRATION.minusSeconds(1));
+        PresenceResponse recorded = new PresenceResponse(1L, 1L, ETUDIANT_ID, SourcePresence.ETUDIANT);
+        when(recorder.record(CODE, ETUDIANT_ID)).thenReturn(recorded);
+
+        assertThat(service.mark(new MarkPresenceRequest(CODE, ETUDIANT_ID))).isSameAs(recorded);
+        verify(codeAttemptService).registerSuccess(ETUDIANT_ID);
+        verify(codeAttemptService, never()).registerFailure(any());
+    }
+
     private PresenceService serviceAt(Instant now) {
         return new PresenceService(repository, exerciseService, sessionService, etudiantService, codeAttemptService,
-                Clock.fixed(now, ZoneOffset.UTC));
+                recorder, Clock.fixed(now, ZoneOffset.UTC));
     }
 
     private static SessionCours session() {

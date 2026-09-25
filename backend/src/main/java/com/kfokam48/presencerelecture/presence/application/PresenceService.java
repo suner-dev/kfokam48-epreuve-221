@@ -1,6 +1,5 @@
 package com.kfokam48.presencerelecture.presence.application;
 
-import com.kfokam48.presencerelecture.common.exception.ApiException;
 import com.kfokam48.presencerelecture.etudiant.application.EtudiantService;
 import com.kfokam48.presencerelecture.etudiant.domain.Etudiant;
 import com.kfokam48.presencerelecture.exercice.application.ExerciseService;
@@ -9,13 +8,14 @@ import com.kfokam48.presencerelecture.presence.api.MarkPresenceRequest;
 import com.kfokam48.presencerelecture.presence.api.PresenceResponse;
 import com.kfokam48.presencerelecture.presence.api.PresenceSessionResponse;
 import com.kfokam48.presencerelecture.presence.domain.Presence;
-import com.kfokam48.presencerelecture.presence.domain.PresenceRepository;
 import com.kfokam48.presencerelecture.presence.domain.SourcePresence;
+import com.kfokam48.presencerelecture.presence.domain.PresenceRepository;
 import com.kfokam48.presencerelecture.session.application.SessionService;
 import com.kfokam48.presencerelecture.session.domain.SessionCours;
-import java.time.Clock;
 import java.util.List;
 import java.util.Map;
+import com.kfokam48.presencerelecture.common.exception.ApiException;
+import java.time.Clock;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -24,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional
 public class PresenceService {
     private static final Set<String> INVALID_CODE_FAILURES = Set.of(
             "CODE_INCONNU", "CODE_EXPIRE", "SESSION_TERMINEE", "SESSION_CLOTUREE"
@@ -35,6 +34,7 @@ public class PresenceService {
     private final SessionService sessionService;
     private final EtudiantService etudiantService;
     private final CodeAttemptService codeAttemptService;
+    private final PresenceRecorder recorder;
     private final Clock clock;
 
     public PresenceService(
@@ -43,6 +43,7 @@ public class PresenceService {
             SessionService sessionService,
             EtudiantService etudiantService,
             CodeAttemptService codeAttemptService,
+            PresenceRecorder recorder,
             Clock clock
     ) {
         this.repository = repository;
@@ -50,24 +51,16 @@ public class PresenceService {
         this.sessionService = sessionService;
         this.etudiantService = etudiantService;
         this.codeAttemptService = codeAttemptService;
+        this.recorder = recorder;
         this.clock = clock;
     }
 
     public PresenceResponse mark(MarkPresenceRequest request) {
         codeAttemptService.checkBlocked(request.etudiantId());
         try {
-            SessionCours session = sessionService.requireByCode(request.code());
-            checkUsable(session);
-            Etudiant etudiant = etudiantService.require(request.etudiantId(), session.getPromotionId());
-            if (repository.findBySessionIdAndEtudiantId(session.getId(), etudiant.getId()).isPresent()) {
-                throw new ApiException(HttpStatus.CONFLICT, "DEJA_PRESENT", "La présence est déjà enregistrée pour cette session.");
-            }
-            Presence presence = repository.save(new Presence(
-                    session.getId(), etudiant.getId(), SourcePresence.ETUDIANT, clock.instant()
-            ));
-            exerciseService.assignPending(session.getId());
-            codeAttemptService.registerSuccess(etudiant.getId());
-            return new PresenceResponse(presence.getId(), presence.getSessionId(), presence.getEtudiantId(), presence.getSource());
+            PresenceResponse recorded = recorder.record(request.code(), request.etudiantId());
+            codeAttemptService.registerSuccess(request.etudiantId());
+            return recorded;
         } catch (ApiException exception) {
             if (INVALID_CODE_FAILURES.contains(exception.code())) {
                 codeAttemptService.registerFailure(request.etudiantId());
@@ -76,6 +69,7 @@ public class PresenceService {
         }
     }
 
+    @Transactional
     public PresenceResponse addManually(ManualPresenceRequest request) {
         SessionCours session = sessionService.require(request.sessionId());
         if (session.getClotureAt() != null) {
@@ -110,15 +104,4 @@ public class PresenceService {
                 .toList();
     }
 
-    private void checkUsable(SessionCours session) {
-        if (session.getClotureAt() != null) {
-            throw new ApiException(HttpStatus.GONE, "SESSION_CLOTUREE", "La session est clôturée.");
-        }
-        if (!clock.instant().isBefore(session.getExpirationAt())) {
-            throw new ApiException(HttpStatus.GONE, "CODE_EXPIRE", "Le code de présence a expiré.");
-        }
-        if (session.getFinAt() != null) {
-            throw new ApiException(HttpStatus.GONE, "SESSION_TERMINEE", "La session est terminée.");
-        }
-    }
 }

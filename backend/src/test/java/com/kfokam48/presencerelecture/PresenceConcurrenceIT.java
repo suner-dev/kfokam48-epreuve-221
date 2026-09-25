@@ -34,7 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class PresenceConcurrenceIT {
-    private static final List<Long> ETUDIANTS = List.of(4L, 5L, 6L, 7L, 8L, 9L);
+    private static final List<Long> ETUDIANTS = List.of(5L, 6L, 7L, 8L, 9L, 10L);
 
     @Autowired
     private MockMvc mockMvc;
@@ -52,10 +52,11 @@ class PresenceConcurrenceIT {
         long sessionId = objectMapper.readTree(created).get("id").asLong();
         String code = objectMapper.readTree(created).get("code").asText();
 
-        List<Integer> statuts = marquerEnParallele(code);
+        List<String> reponses = marquerEnParallele(code);
+        List<Integer> statuts = reponses.stream().map(r -> Integer.parseInt(r.split(" ", 2)[0])).toList();
 
         assertThat(statuts)
-                .as("le contrat annonce 201 pour chaque marquage : aucun ne doit échouer sous concurrence")
+                .as("le contrat annonce 201 pour chaque marquage : aucun ne doit echouer sous concurrence. Reponses: " + reponses)
                 .containsOnly(201);
 
         assertThat(etudiantsPresents(sessionId))
@@ -63,40 +64,41 @@ class PresenceConcurrenceIT {
                 .containsExactlyInAnyOrderElementsOf(ETUDIANTS);
     }
 
-    private List<Integer> marquerEnParallele(String code) throws Exception {
+    private List<String> marquerEnParallele(String code) throws Exception {
         CountDownLatch depart = new CountDownLatch(1);
         ExecutorService pool = Executors.newFixedThreadPool(ETUDIANTS.size());
         try {
-            List<Callable<Integer>> appels = new ArrayList<>();
+            List<Callable<String>> appels = new ArrayList<>();
             for (Long etudiantId : ETUDIANTS) {
                 appels.add(() -> {
                     depart.await(10, TimeUnit.SECONDS);
                     return marquerPresence(code, etudiantId);
                 });
             }
-            List<Future<Integer>> resultats = new ArrayList<>();
-            for (Callable<Integer> appel : appels) {
+            List<Future<String>> resultats = new ArrayList<>();
+            for (Callable<String> appel : appels) {
                 resultats.add(pool.submit(appel));
             }
             depart.countDown();
 
-            List<Integer> statuts = new ArrayList<>();
-            for (Future<Integer> resultat : resultats) {
-                statuts.add(resultat.get(90, TimeUnit.SECONDS));
+            List<String> reponses = new ArrayList<>();
+            for (Future<String> resultat : resultats) {
+                reponses.add(resultat.get(90, TimeUnit.SECONDS));
             }
-            return statuts;
+            return reponses;
         } finally {
             pool.shutdownNow();
         }
     }
 
-    private int marquerPresence(String code, Long etudiantId) {
+    private String marquerPresence(String code, Long etudiantId) {
         try {
-            return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+            var reponse = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                             .post("/api/presences")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(new MarkPresenceRequest(code, etudiantId))))
-                    .andReturn().getResponse().getStatus();
+                    .andReturn().getResponse();
+            return reponse.getStatus() + " " + reponse.getContentAsString();
         } catch (Exception exception) {
             throw new IllegalStateException(exception);
         }

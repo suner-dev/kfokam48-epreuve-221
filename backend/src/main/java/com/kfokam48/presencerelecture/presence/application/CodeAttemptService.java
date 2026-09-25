@@ -8,7 +8,6 @@ import java.time.Clock;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -41,7 +40,7 @@ public class CodeAttemptService {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void registerFailure(Long etudiantId) {
         if (!etudiantRepository.existsById(etudiantId)) {
             return;
@@ -56,7 +55,7 @@ public class CodeAttemptService {
         repository.save(tentative);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void registerSuccess(Long etudiantId) {
         repository.findByEtudiantId(etudiantId).ifPresent(tentative -> {
             tentative.reset();
