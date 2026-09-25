@@ -51,6 +51,8 @@ curl -s http://localhost:8080/api/promotions
 
 Angular est choisi pour ses trois écrans, ses services dédiés, ses formulaires réactifs et son routage. La moyenne affichée provient de l’API ; elle n’est pas recalculée dans le navigateur.
 
+**Chaque exercice est relu par deux pairs.** La note retenue est la moyenne des notes rendues, et elle est marquée **provistoire** tant que les deux pairs n'ont pas tous deux rendu — c'est la seule situation où l'API renvoie une note non entière. L'écran étudiant affiche cette mention et le nombre de notes reçues sur les deux attendues ; la moyenne, elle, ne sort jamais du calcul de l'API.
+
 ## Configuration
 
 La configuration est séparée en trois fichiers, comme l'exige la consigne 2.2 ; les
@@ -98,7 +100,7 @@ dépend d'un utilisateur réel, et le jeu est déterministe.
 | `1` | `DEMO2026` | rafraîchie à chaque démarrage **si la session est encore ouverte** : `expirationAt = maintenant + 15 min` | l'exercice `1`, `EN_ATTENTE_DE_RELECTURE`, relu par l'étudiant `2` |
 | `2` | `DEMO-B` | 24 h après le seed | les 57 présences `Demo` (alternées `ETUDIANT` / `FORMATEUR`) et les 3 exercices ci-dessous |
 
-**Les trois états d'exercice, pour que le tableau ait de quoi montrer :**
+**Les trois états d'exercice, pour que le tableau ait de quoi montrer.** Le seed est antérieur au changement de l'enveloppe : chaque exercice y porte une seule affectation, ce qui rend ses notes provisoires — c'est voulu, et c'est exactement l'état « un seul pair a rendu » qu'un correcteur doit voir.
 
 | `exerciceId` | Session | Auteur | `statut` | Relecteur |
 |---:|---:|---:|---|---|
