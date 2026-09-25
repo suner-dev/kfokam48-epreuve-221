@@ -155,7 +155,12 @@
             <tbody>
               @for (exercise of exercises(); track exercise.id) {
                 <tr>
-                  <td>#{{ exercise.id }}</td><td>#{{ exercise.etudiantId }}</td><td>{{ statusLabel(exercise.statut) }}</td>
+                  <td>#{{ exercise.id }}</td><td>#{{ exercise.etudiantId }}</td>
+                  <td>
+                    <span class="status-badge" [class]="'status-badge ' + statusClass(exercise.statut)" [attr.data-status]="exercise.statut">
+                      {{ statusLabel(exercise.statut) }}
+                    </span>
+                  </td>
                   <td>{{ exercise.relecteurId ?? 'Aucun' }}</td><td>{{ formatDate(exercise.commenceeAt) }}</td><td>{{ formatDate(exercise.rendueAt) }}</td>
                 </tr>
               }

@@ -194,6 +194,45 @@ th {
   color: #0c4a6e;
 }
 
+.status-badge {
+  background: #e2e8f0;
+  border: 1px solid #94a3b8;
+  border-radius: 999px;
+  color: #334155;
+  display: inline-block;
+  font-size: .8rem;
+  font-weight: 700;
+  padding: .2rem .6rem;
+  white-space: nowrap;
+}
+
+.status-depose {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+  color: #075985;
+}
+
+.status-attente-relecture,
+.status-attente-sans-relecteur {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.status-relu {
+  background: #dcfce7;
+  border-color: #22c55e;
+  color: #166534;
+}
+
+.status-attente-verrouillee,
+.status-relu-verrouillee {
+  background: #e5e7eb;
+  border-color: #6b7280;
+  color: #374151;
+  text-decoration: line-through;
+}
+
 @media (max-width: 42rem) {
   .card {
     padding: 1rem;

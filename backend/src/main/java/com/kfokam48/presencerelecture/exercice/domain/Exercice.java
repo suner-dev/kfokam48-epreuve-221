@@ -62,6 +62,15 @@ public class Exercice {
         this.lien = lien;
     }
 
+    public void lockForCloture() {
+        if (statut == StatutExercice.RELU) {
+            statut = StatutExercice.RELU_VERROUILLE;
+        } else if (statut != StatutExercice.RELU_VERROUILLE
+                && statut != StatutExercice.EN_ATTENTE_VERROUILLE) {
+            statut = StatutExercice.EN_ATTENTE_VERROUILLE;
+        }
+    }
+
     public void setStatut(StatutExercice statut) {
         this.statut = statut;
     }

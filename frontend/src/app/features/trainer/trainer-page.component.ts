@@ -207,6 +207,18 @@ export class TrainerPageComponent {
     return labels[statut];
   }
 
+  protected statusClass(statut: StatutExercice): string {
+    const classes: Record<StatutExercice, string> = {
+      DEPOSE: 'status-depose',
+      EN_ATTENTE_DE_RELECTURE: 'status-attente-relecture',
+      EN_ATTENTE_SANS_RELECTEUR: 'status-attente-sans-relecteur',
+      RELU: 'status-relu',
+      EN_ATTENTE_VERROUILLE: 'status-attente-verrouillee',
+      RELU_VERROUILLE: 'status-relu-verrouillee',
+    };
+    return classes[statut];
+  }
+
   protected formatDate(value: string | null): string {
     if (!value) {
       return '—';
