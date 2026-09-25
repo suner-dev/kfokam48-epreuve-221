@@ -38,9 +38,9 @@ tout `spring init`).
 
 ## Étape 2 — Première version
 
-**Fait :**
-**Bloqué :**
-**IA :**
+**Fait :** Backend Spring Boot/PostgreSQL/H2, frontend Angular et parcours formateur/étudiant/relecteur intégrés. Les tickets Must sont livrés par branches, commits atomiques et PR ; le contrat, les tests backend et les tests Angular sont présents.
+**Bloqué :** L’enveloppe reste fermée jusqu’à la validation complète de v0.1 ; aucun changement d’enveloppe n’a été appliqué.
+**IA :** L’IA a aidé à produire les DTO API, les services Angular et les scénarios de test. J’ai comparé chaque endpoint livré à `api/contrat.yaml`, exécuté `./backend/mvnw -B verify`, `npm run build` et `npm test -- --watch=false`, puis corrigé les écarts Must de documentation et de reproductibilité.
 
 ---
 
