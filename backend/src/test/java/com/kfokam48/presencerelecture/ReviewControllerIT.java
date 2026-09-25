@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -85,6 +86,34 @@ class ReviewControllerIT {
         mockMvc.perform(get("/api/sessions/{id}/exercices", session.id()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].statut").value("RELU"));
+    }
+
+    @Test
+    void corrigeUneRelectureAvantLaCloturePuisLaRefuseApres() throws Exception {
+        SessionInfo session = createSession("Correction note");
+        markPresence(session, 2L);
+        long reviewId = createReview(session.id(), "https://example.test/exercice/correction");
+
+        mockMvc.perform(post("/api/relectures/{id}", reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new SubmitReviewRequest(new BigDecimal("17"), "Première version"))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/relectures/{id}", reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new SubmitReviewRequest(new BigDecimal("18"), "Version corrigée"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(reviewId))
+                .andExpect(jsonPath("$.note").value(18))
+                .andExpect(jsonPath("$.commentaire").value("Version corrigée"));
+
+        mockMvc.perform(post("/api/sessions/{id}/cloture", session.id()))
+                .andExpect(status().isOk());
+        mockMvc.perform(put("/api/relectures/{id}", reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new SubmitReviewRequest(new BigDecimal("19"), "Trop tard"))))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.code").value("SESSION_CLOTUREE"));
     }
 
     @Test
