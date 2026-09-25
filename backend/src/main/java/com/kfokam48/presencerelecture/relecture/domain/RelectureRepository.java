@@ -42,4 +42,13 @@ public interface RelectureRepository extends JpaRepository<Relecture, Long> {
             group by exercise.etudiantId
             """)
     List<Object[]> averageByPromotion(@Param("promotionId") Long promotionId);
+
+    @Query("""
+            select review
+            from Relecture review
+            where review.relecteurId = :etudiantId
+              and review.rendueAt is null
+            order by review.id
+            """)
+    List<Relecture> findPendingForReviewer(@Param("etudiantId") Long etudiantId);
 }

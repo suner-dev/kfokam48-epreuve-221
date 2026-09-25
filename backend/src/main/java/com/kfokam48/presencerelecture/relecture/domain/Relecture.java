@@ -57,6 +57,14 @@ public class Relecture {
         return rendueAt;
     }
 
+    public Instant getCommenceeAt() {
+        return commenceeAt;
+    }
+
+    public void start(Instant commenceeAt) {
+        this.commenceeAt = commenceeAt;
+    }
+
     public void render(Integer note, String commentaire, Instant rendueAt) {
         this.note = note;
         this.commentaire = commentaire;
