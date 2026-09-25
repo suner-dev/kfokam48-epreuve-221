@@ -73,7 +73,7 @@
 | Version | Changement |
 |---|---|
 | v0.1.6 | **Bug corrigé** : deux étudiants marquant leur présence en même temps ne perdent plus de présence. `REQUIRES_NEW` consommait deux connexions du pool par marquage ; le pool saturait, la transaction était annulée et la présence disparaissait. Reproduit puis corrigé, test de concurrence à l'appui |
-| v1.0 | **Changement de besoin** « deux pairs par exercice, moyenne des deux, provisoire si un seul a rendu » : analyse, migration et backend **réalisés mais non livrés** — la base de test H2 ne sait pas supprimer l'index unique d'une contrainte, ce qui empêche de vérifier quoi que ce soit. Détail et décision deduction dans `docs/JOURNAL.md`, étape 3 |
+| v1.0 | **Changement de besoin** de l'enveloppe de l'étape 3 : deux pairs par exercice, moyenne des deux notes, mention provisoire. Q6 annulée, RG20 et EF17 créées, migration V4 (unicité relâchée de `(exercice_id)` à `(exercice_id, relecteur_id)`), moyenne calculée par l'API. **Livré et vérifié** : le blocage H2 a été levé en recréant la table, les identifiants n'étant pas recopiés |
 
 ## Étape 4 — Version finale
 
@@ -85,9 +85,9 @@
 
 ## Limites connues de la v1.0
 
-- Un seul relecteur par exercice reste en vigueur : la règle **Q6 n'a pas été annulée en production**,
-  même si l'analyse, le contrat et le backend de la version à deux pairs existent sur la branche
-  `feature/70-deux-relecteurs`. C'est un choix assumé : livrer sans preuve aurait été pire.
+- L'écran étudiant n'affiche pas encore la **mention provisoire** ni la moyenne : le backend livre
+  `note`, `nbNotes` et `provisoire`, le frontend doit encore les présenter. Le calcul, lui, est
+  fait par l'API et n'est jamais recalculé dans le navigateur (F3).
 - Le blocage anti-devinette s'applique par `etudiantId` et non par appareil, faute d'authentification
   (Q1). C'est documenté en H4.
 - L'étape 5 (épreuve Git) a été annulée : un seul dépôt public existe.

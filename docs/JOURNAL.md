@@ -58,31 +58,41 @@ de 5. Reproduit devant le correcteur : 6 marquages simultanés donnaient `500 50
 Corrigé en sortant le comptage anti-devinette de la transaction de présence.
 
 **2. Le changement de besoin** (« deux pairs par exercice, moyenne des deux, provisoire si un seul a
-rendu ») — **réalisé mais NON livré**, et je préfère le dire ainsi.
+rendu ») — **réalisé et livré** (issues #70 et #71, PR #76).
 
-**Ce qui est prêt et vérifié** (branche `feature/70-deux-relecteurs`, non mergée) : l'analyse est
-remise à jour dans un commit qui le dit — RG6 barrée et marquée annulée, RG20 créée, EF17 créée,
-H13 et H14 ajoutées, contradiction secondaire Q8/Q9 tranchée par écrit, D2 en cardinalité `0..2` et
-D4 corrigé sur le caractère provisoire ; la migration V4 et le contrat sont écrits ; le backend est
-implémenté, `ReviewSummaryTest` (5 tests) et `DeuxRelecteursIT` (3 tests de bout en bout) le
-prouvent.
+**Ce qui a été livré** (PR #76, branche `feature/70-deux-relecteurs`) : l'analyse remise à jour
+dans un commit qui le dit — RG6 barrée et marquée annulée, RG20 créée, EF17 créée, H13 et H14
+ajoutées, contradiction secondaire Q8/Q9 tranchée par écrit, D2 en cardinalité `0..2` et D4 corrigé
+sur le caractère provisoire ; la migration V4 et le contrat ; le backend complet, prouvé par
+`ReviewSummaryTest` (5 tests) et `DeuxRelecteursIT` (3 tests de bout en bout). Vérifié :
+`./backend/mvnw clean verify` → 35 tests unitaires et 37 tests d'intégration, 0 échec.
 
-**Ce qui bloque :** V1 déclare `CONSTRAINT uk_relecture_exercice UNIQUE (exercice_id)`. H2 2.3 — la
-base de test — conserve l'index unique créé implicitement pour cette contrainte même après
-`ALTER TABLE ... DROP CONSTRAINT`, puis refuse `DROP INDEX` au motif que cet index « appartient à
-une contrainte » (erreur 90085), et son nom réel est introuvable (erreur 90057). PostgreSQL, qui est
-la base d'exécution, n'a pas ce défaut. Une recréation de table le contourne sur les deux bases, mais
-la suite de tests est alors en échec sur trois scénarios d'atterrissage, et **je n'ai pas le temps
-de les comprendre et de les corriger proprement**.
+**Le blocage, et comment il a été levé :** V1 déclare `CONSTRAINT uk_relecture_exercice UNIQUE
+(exercice_id)`. H2 2.3 — la base de test — conserve l'index unique créé implicitement pour cette
+contrainte même après `ALTER TABLE ... DROP CONSTRAINT`, puis refuse `DROP INDEX` au motif que cet
+index « appartient à une contrainte » (erreur 90085), et son nom réel est introuvable (erreur
+90057). PostgreSQL, base d'exécution, n'a pas ce défaut. Quatre approches ont été essayées et
+vérifiées par un build complet chacune : `DROP CONSTRAINT` simple, `DROP INDEX` nommé, une
+migration Java introspective, puis la recréation de table. C'est la quatrième qui donne le même
+schéma sur les deux bases, ce qu'exige la consigne 2.2.
 
-**Pourquoi je ne fusionne pas quand même :** la consigne 15 est explicite — « si une seule case est
-fausse, ne pas poser le jalon ». Livrer une garantie d'unicité à moitié supprimée en la déclarant
-vérifiée serait exactement le défaut que l'issue #50 a sanctionné. Une fonctionnalité non vérifiée
-n'est pas une fonctionnalité.
+**Le second obstacle, plus instructif :** la recréation fonctionnait, mais trois scénarios
+d'atterrissage échouaient en `409 CONFLIT_CONCURRENCE` sans qu'aucun message ne désigne la
+migration. La table recopiait la colonne `id`, l'identité repartait de 1 alors que les identifiants
+1 à 4 étaient déjà pris par le seed, et la première insertion suivante butait sur la clé
+primaire. Les identifiants ne sont désormais plus recopiés — `relecture` est une table feuille,
+aucune table n'y fait référence, donc renuméroter ne casse aucune jointure. Le commentaire de la
+migration l'explique, pour que personne ne « corrige » ce choix sans savoir pourquoi il a été fait.
 
-**Bloqué :** ~3 h 20 au total sur l'étape 3, dont environ 40 min sur ce seul blocage H2 : quatre
-approches Distinctes (DROP CONSTRAINT simple, DROP INDEX nommé, migration Java introspective,
-recréation de table), chacune vérifiée par un build complet.
+**Pourquoi je n'ai pas fusionné avant :** la consigne 15 est explicite — « si une seule case est
+fausse, ne pas poser le jalon ». À un moment, la fonctionnalité était prête et invérifiable ; j'ai
+préféré la laisser non livrée et le dire trois fois plutôt que déclarer vérifiée une garantie
+d'unicité à moitié supprimée.
+
+**Bloqué :** ~3 h 20 au total sur l'étape 3, dont environ 45 min sur le seul schéma : quatre approches
+distinctes pour la contrainte (DROP CONSTRAINT simple, DROP INDEX nommé, migration Java
+introspective, recréation de table), chacune vérifiée par un build complet, puis le problème d'identité
+de la table recréée.
 
 **Ce que j'ai sorti du périmètre pour absorber le changement de besoin, et pourquoi :** les issues
 **#58, #59 et #60** — la coquille applicative : en-tête « verre », bibliothèque de composants,

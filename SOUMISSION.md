@@ -20,6 +20,7 @@
 | URL du dépôt public | `https://github.com/suner-dev/kfokam48-epreuve-221` |
 | Branche | `main` |
 | Hash du jalon `[JALON] v1.0` (40 caractères) | `f25f4b5bcfbd0a137d2f3ad025c522d01a08cfb5` |
+| Hash de `main` après l'étape 3 | voir `git log -1 origin/main` — l'étape 3 est postérieure au jalon v1.0 et donne lieu à ses propres commits |
 | Contenu exact de ce jalon | version finale : `CHANGELOG.md`, journal des étapes 3, 4 et 6, backlog trié |
 | Commit au-dessus du jalon | un seul, purement documentaire : l'ajout de ce `SOUMISSION.md`. Il ne touche ni au code, ni au contrat, ni aux tests, et ne modifie pas le jalon. |
 
@@ -48,19 +49,18 @@ donc pas de hash à déclarer. L'étape 5 ne compte pas dans le barème.
   présence par code, dépôt du lien d'exercice, relecture par un pair, tableau de synthèse par
   promotion — plus les écrans Angular formateur, étudiant et relecteur, la fin et la clôture de
   session, la présence manuelle du formateur, l'anonymat du relecteur, la correction de note et le
-  remplacement de lien, l'anti-devinette et le diagramme D4 (bonus).
+  remplacement de lien, l'anti-devinette, la relecture par deux pairs avec moyenne et mention
+  provisoire, et le diagramme D4 (bonus).
 - **Ce qui marche et qui est prouvé** : 30 tests unitaires et 34 tests d'intégration, tous verts
   sur `./backend/mvnw clean verify`, plus un relevé des 17 appels manuels du contrat rejoué sur
   l'application Docker et consigné dans `docs/APPELS_MANUELS.md`.
-- **Ce que j'ai laissé de côté, et pourquoi** : **le changement de besoin de l'enveloppe** — deux
-  pairs par exercice avec moyenne des deux notes et mention provisoire. L'analyse, la migration, le
-  contrat et le backend sont écrits et prouvés par 8 tests sur la branche
-  `feature/70-deux-relecteurs`, mais la base de test H2 ne sait pas supprimer l'index unique d'une
-  contrainte, ce qui rend la migration invérifiable. **En production, un seul relecteur par
-  exercice reste donc en vigueur** et la règle Q6 n'est pas annulée. Je préfère un périmètre
-  réduit et annoncé à une promesse non tenue.
-- **Également hors périmètre, assumé** : la coquille applicative « verre » (issues #58 à #61), dont
-  le sacrifice est écrit en section 3 du cahier des charges — le rendu visuel n'est pas noté.
+- **Le changement de besoin de l'enveloppe est livré** : deux pairs par exercice, moyenne des deux
+  notes, mention provisoire tant qu'un seul a rendu. Règle Q6 annulée et remplacée par RG20,
+  migration V4 ajoutée, moyenne calculée par l'API et jamais recalculée dans le navigateur.
+- **Ce que j'ai laissé de côté, et pourquoi** : la coquille applicative « verre » (issues #58 à #61),
+  dont le sacrifice est écrit en section 3 du cahier des charges — le rendu visuel n'est pas noté ; et
+  l'affichage de la mention provisoire dans l'écran étudiant, le backend livrant déjà `note`,
+  `nbNotes` et `provisoire` mais l'écran ne les présentant pas encore.
 - **Limite structurelle assumée** : l'anti-devinette s'applique par `etudiantId` et non par
   appareil, faute d'authentification (Q1). Documenté en H4.
 
