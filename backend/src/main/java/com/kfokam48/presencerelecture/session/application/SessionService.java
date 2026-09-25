@@ -5,6 +5,7 @@ import com.kfokam48.presencerelecture.promotion.application.PromotionService;
 import com.kfokam48.presencerelecture.session.api.CloseSessionResponse;
 import com.kfokam48.presencerelecture.session.api.CreateSessionRequest;
 import com.kfokam48.presencerelecture.session.api.CreatedSessionResponse;
+import com.kfokam48.presencerelecture.session.api.SessionDetailResponse;
 import com.kfokam48.presencerelecture.session.api.FinishSessionResponse;
 import com.kfokam48.presencerelecture.session.domain.SessionCours;
 import com.kfokam48.presencerelecture.session.domain.SessionCoursRepository;
@@ -54,6 +55,14 @@ public class SessionService {
                 "SESSION_INCONNUE",
                 "La session demandée n'existe pas."
         ));
+    }
+
+    public SessionDetailResponse detail(Long id) {
+        SessionCours session = require(id);
+        return new SessionDetailResponse(
+                session.getId(), session.getTitre(), session.getCode(), session.getPromotionId(),
+                session.getOuvertureAt(), session.getExpirationAt(), session.getFinAt(), session.getClotureAt()
+        );
     }
 
     public FinishSessionResponse finish(Long id) {

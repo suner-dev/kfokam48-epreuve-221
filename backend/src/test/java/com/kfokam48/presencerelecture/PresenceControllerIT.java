@@ -1,5 +1,6 @@
 package com.kfokam48.presencerelecture;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -24,6 +25,31 @@ class PresenceControllerIT {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Test
+    void exposeLesPresencesDuneSessionAvecLeurSource() throws Exception {
+        String sessionBody = objectMapper.writeValueAsString(new CreateSessionRequest("Session liste présences", 1L));
+        String created = mockMvc.perform(post("/api/sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(sessionBody))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long sessionId = objectMapper.readTree(created).get("id").asLong();
+        String code = objectMapper.readTree(created).get("code").asText();
+
+        mockMvc.perform(post("/api/presences")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new MarkPresenceRequest(code, 1L))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/sessions/{id}/presences", sessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].etudiantId").value(1))
+                .andExpect(jsonPath("$[0].nom").value("Dupont"))
+                .andExpect(jsonPath("$[0].present").value(true))
+                .andExpect(jsonPath("$[0].source").value("ETUDIANT"))
+                .andExpect(jsonPath("$[0].marqueeAt").isString());
+    }
 
     @Test
     void enregistreUnePresenceEtRefuseUnDoublon() throws Exception {

@@ -3,6 +3,7 @@ package com.kfokam48.presencerelecture.session.api;
 import com.kfokam48.presencerelecture.session.application.SessionService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,6 +22,11 @@ public class SessionController {
     @PostMapping
     public ResponseEntity<CreatedSessionResponse> create(@Valid @RequestBody CreateSessionRequest request) {
         return ResponseEntity.status(201).body(service.create(request));
+    }
+
+    @GetMapping("/{id}")
+    public SessionDetailResponse detail(@PathVariable Long id) {
+        return service.detail(id);
     }
 
     @PostMapping("/{id}/fin")

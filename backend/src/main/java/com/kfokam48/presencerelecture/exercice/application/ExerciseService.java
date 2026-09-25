@@ -79,7 +79,9 @@ public class ExerciseService {
                     return new ExerciseDetailResponse(
                             exercise.getId(), exercise.getEtudiantId(), exercise.getStatut(),
                             review == null ? null : review.getRelecteurId(),
-                            review == null ? null : review.getId()
+                            review == null ? null : review.getId(),
+                            review == null ? null : review.getCommenceeAt(),
+                            review == null ? null : review.getRendueAt()
                     );
                 })
                 .toList();
