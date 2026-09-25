@@ -1,0 +1,126 @@
+<section class="page" aria-labelledby="reviewer-title">
+  <header class="page-header">
+    <p class="eyebrow">Parcours relecteur</p>
+    <h1 id="reviewer-title">Rendre une relecture</h1>
+    <p>Consultez vos relectures attribuées et rendez une note entière sur 20 avec un commentaire.</p>
+  </header>
+
+  @if (promotionsStatus() === 'loading') {
+    <p class="request-status" role="status">Chargement des promotions…</p>
+  }
+  @if (promotionsStatus() === 'error' && promotionsError(); as error) {
+    <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+  }
+  @if (promotionsStatus() === 'empty') {
+    <p class="request-status">Aucune promotion n’est disponible.</p>
+  }
+
+  <section class="card" aria-labelledby="identity-title">
+    <h2 id="identity-title">Mon identité de relecteur</h2>
+    <form [formGroup]="identityForm" novalidate>
+      <div class="form-grid">
+        <div>
+          <label for="promotion">Promotion</label>
+          <select id="promotion" formControlName="promotionId" (change)="onPromotionChanged()">
+            <option [ngValue]="0">Choisir une promotion</option>
+            @for (promotion of promotions(); track promotion.id) {
+              <option [ngValue]="promotion.id">{{ promotion.nom }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label for="student">Étudiant</label>
+          <select id="student" formControlName="etudiantId" (change)="onStudentChanged()">
+            <option [ngValue]="0">Choisir mon nom</option>
+            @for (student of students(); track student.id) {
+              <option [ngValue]="student.id">{{ student.prenom }} {{ student.nom }}</option>
+            }
+          </select>
+          @if (studentsStatus() === 'loading') {
+            <p class="request-status" role="status">Chargement des étudiants…</p>
+          }
+          @if (studentsStatus() === 'error' && studentsError(); as error) {
+            <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+          }
+          @if (studentsStatus() === 'empty') {
+            <p class="request-status">Aucun étudiant n’est inscrit dans cette promotion.</p>
+          }
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="pending-reviews-title">
+    <div class="section-heading">
+      <div>
+        <h2 id="pending-reviews-title">Mes relectures à faire</h2>
+        <p>La liste présente seulement le lien de l’exercice, jamais l’identité de son auteur.</p>
+      </div>
+      <button type="button" class="secondary" (click)="refreshPendingReviews()" [disabled]="identityForm.controls.etudiantId.invalid">Actualiser</button>
+    </div>
+    @if (reviewsStatus() === 'idle') {
+      <p class="request-status">Choisissez votre nom pour afficher vos relectures attribuées.</p>
+    }
+    @if (reviewsStatus() === 'loading') {
+      <p class="request-status" role="status">Chargement des relectures…</p>
+    }
+    @if (reviewsStatus() === 'error' && reviewsError(); as error) {
+      <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+    }
+    @if (reviewsStatus() === 'empty') {
+      <p class="request-status">Vous n’avez aucune relecture à rendre.</p>
+    }
+    @if (reviewsStatus() === 'success') {
+      <div class="review-list">
+        @for (review of pendingReviews(); track review.relectureId) {
+          <article class="review-card" [class.active]="activeReview()?.relectureId === review.relectureId">
+            <h3>Relecture #{{ review.relectureId }}</h3>
+            <p><a [href]="review.lienExercice" target="_blank" rel="noopener">Ouvrir le lien de l’exercice</a></p>
+            <p>{{ review.commenceeAt ? 'Relecture déjà commencée.' : 'Relecture non commencée.' }}</p>
+            <button type="button" (click)="startReview(review)" [disabled]="actionStatus() === 'loading'">
+              {{ review.commenceeAt ? 'Sélectionner cette relecture' : 'Commencer la relecture' }}
+            </button>
+          </article>
+        }
+      </div>
+    }
+  </section>
+
+  @if (actionStatus() === 'loading') {
+    <p class="request-status" role="status">Enregistrement en cours…</p>
+  }
+  @if (actionStatus() === 'success' && actionSuccess()) {
+    <p class="request-status success" role="status">{{ actionSuccess() }}</p>
+  }
+  @if (actionStatus() === 'error' && actionError(); as error) {
+    <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+  }
+
+  <section class="card" aria-labelledby="submission-title">
+    <h2 id="submission-title">Rendre ma note</h2>
+    @if (activeReview(); as review) {
+      <p>Vous rendez la relecture #{{ review.relectureId }}. Seule cette soumission initiale est proposée dans v0.1.</p>
+      <form [formGroup]="reviewForm" (ngSubmit)="submitReview()" novalidate>
+        <div class="form-grid">
+          <div>
+            <label for="note">Note entière sur 20</label>
+            <input id="note" type="number" min="0" max="20" step="1" formControlName="note" />
+            @if (reviewForm.controls.note.touched && reviewForm.controls.note.invalid) {
+              <p class="field-error">La note doit être comprise entre 0 et 20.</p>
+            }
+          </div>
+          <div>
+            <label for="comment">Commentaire</label>
+            <textarea id="comment" rows="4" formControlName="commentaire"></textarea>
+            @if (reviewForm.controls.commentaire.touched && reviewForm.controls.commentaire.invalid) {
+              <p class="field-error">Le commentaire est obligatoire.</p>
+            }
+          </div>
+        </div>
+        <button type="submit" [disabled]="actionStatus() === 'loading'">Envoyer ma note</button>
+      </form>
+    } @else {
+      <p class="request-status">Commencez ou sélectionnez une relecture pour pouvoir rendre votre note.</p>
+    }
+  </section>
+</section>
