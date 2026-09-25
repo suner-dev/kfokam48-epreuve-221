@@ -40,7 +40,7 @@ curl -s http://localhost:8080/api/promotions
 
 ## Tests et build
 
-- Backend : `./backend/mvnw clean verify` — 28 tests unitaires et 33 tests d'intégration,
+- Backend : `./backend/mvnw clean verify` — 30 tests unitaires et 34 tests d'intégration,
   tous sur H2, sans aucune base locale à installer.
 - Tests unitaires backend : `./backend/mvnw test`
 - Frontend : `cd frontend && npm ci && npm run build`
