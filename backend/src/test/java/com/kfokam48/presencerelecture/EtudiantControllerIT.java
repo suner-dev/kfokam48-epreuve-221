@@ -36,6 +36,13 @@ class EtudiantControllerIT {
     }
 
     @Test
+    void refuseUnePromotionInconnue() throws Exception {
+        mockMvc.perform(get("/api/etudiants").param("promotionId", "999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PROMOTION_INCONNUE"));
+    }
+
+    @Test
     void masqueLidentiteDuRelecteurDansLesResultatsRecus() throws Exception {
         String session = objectMapper.writeValueAsString(new CreateSessionRequest("Anonymat", 1L));
         String createdSession = mockMvc.perform(post("/api/sessions")
