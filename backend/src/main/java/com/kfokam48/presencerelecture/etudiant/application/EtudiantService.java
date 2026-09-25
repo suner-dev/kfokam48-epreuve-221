@@ -3,6 +3,7 @@ package com.kfokam48.presencerelecture.etudiant.application;
 import com.kfokam48.presencerelecture.common.exception.ApiException;
 import com.kfokam48.presencerelecture.etudiant.domain.Etudiant;
 import com.kfokam48.presencerelecture.etudiant.domain.EtudiantRepository;
+import com.kfokam48.presencerelecture.promotion.application.PromotionService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -12,12 +13,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class EtudiantService {
     private final EtudiantRepository repository;
+    private final PromotionService promotionService;
 
-    public EtudiantService(EtudiantRepository repository) {
+    public EtudiantService(EtudiantRepository repository, PromotionService promotionService) {
         this.repository = repository;
+        this.promotionService = promotionService;
     }
 
     public List<Etudiant> findByPromotion(Long promotionId) {
+        promotionService.require(promotionId);
         return repository.findByPromotionIdOrderByNomAscPrenomAsc(promotionId);
     }
 
