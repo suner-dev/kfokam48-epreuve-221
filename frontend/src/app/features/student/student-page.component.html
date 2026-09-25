@@ -1,0 +1,140 @@
+<section class="page" aria-labelledby="student-title">
+  <header class="page-header">
+    <p class="eyebrow">Parcours étudiant</p>
+    <h1 id="student-title">Marquer ma présence et déposer mon exercice</h1>
+    <p>Sélectionnez votre nom : aucun mot de passe n’est demandé.</p>
+  </header>
+
+  @if (promotionsStatus() === 'loading') {
+    <p class="request-status" role="status">Chargement des promotions…</p>
+  }
+  @if (promotionsStatus() === 'error' && promotionsError(); as error) {
+    <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+  }
+  @if (promotionsStatus() === 'empty') {
+    <p class="request-status">Aucune promotion n’est disponible.</p>
+  }
+
+  <section class="card" aria-labelledby="identity-title">
+    <h2 id="identity-title">Mon identité</h2>
+    <form [formGroup]="identityForm" novalidate>
+      <div class="form-grid">
+        <div>
+          <label for="promotion">Promotion</label>
+          <select id="promotion" formControlName="promotionId" (change)="onPromotionChanged()">
+            <option [ngValue]="0">Choisir une promotion</option>
+            @for (promotion of promotions(); track promotion.id) {
+              <option [ngValue]="promotion.id">{{ promotion.nom }}</option>
+            }
+          </select>
+          @if (identityForm.controls.promotionId.touched && identityForm.controls.promotionId.invalid) {
+            <p class="field-error">La promotion est obligatoire.</p>
+          }
+        </div>
+        <div>
+          <label for="student">Étudiant</label>
+          <select id="student" formControlName="etudiantId" (change)="onStudentChanged()">
+            <option [ngValue]="0">Choisir mon nom</option>
+            @for (student of students(); track student.id) {
+              <option [ngValue]="student.id">{{ student.prenom }} {{ student.nom }}</option>
+            }
+          </select>
+          @if (studentsStatus() === 'loading') {
+            <p class="request-status" role="status">Chargement des étudiants…</p>
+          }
+          @if (studentsStatus() === 'error' && studentsError(); as error) {
+            <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+          }
+          @if (studentsStatus() === 'empty') {
+            <p class="request-status">Aucun étudiant n’est inscrit dans cette promotion.</p>
+          }
+          @if (identityForm.controls.etudiantId.touched && identityForm.controls.etudiantId.invalid) {
+            <p class="field-error">La sélection de votre nom est obligatoire.</p>
+          }
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="presence-title">
+    <h2 id="presence-title">Marquer ma présence</h2>
+    <form [formGroup]="presenceForm" (ngSubmit)="markPresence()" novalidate>
+      <label for="code">Code de présence</label>
+      <div class="inline-form">
+        <input id="code" type="text" formControlName="code" autocomplete="off" />
+        <button type="submit" [disabled]="actionStatus() === 'loading'">Marquer ma présence</button>
+      </div>
+      @if (presenceForm.controls.code.touched && presenceForm.controls.code.invalid) {
+        <p class="field-error">Le code de présence est obligatoire.</p>
+      }
+    </form>
+  </section>
+
+  @if (actionStatus() === 'loading') {
+    <p class="request-status" role="status">Enregistrement en cours…</p>
+  }
+  @if (actionStatus() === 'success' && actionSuccess()) {
+    <p class="request-status success" role="status">{{ actionSuccess() }}</p>
+  }
+  @if (actionStatus() === 'error' && actionError(); as error) {
+    <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+  }
+
+  <section class="card" aria-labelledby="exercise-title">
+    <h2 id="exercise-title">Déposer le lien de mon exercice</h2>
+    <p>Après une présence réussie, l’identifiant de session est rempli automatiquement. Vous pouvez aussi saisir celui communiqué par le formateur.</p>
+    <form [formGroup]="exerciseForm" (ngSubmit)="submitExercise()" novalidate>
+      <div class="form-grid">
+        <div>
+          <label for="session-id">Identifiant de session</label>
+          <input id="session-id" type="number" min="1" formControlName="sessionId" />
+          @if (exerciseForm.controls.sessionId.touched && exerciseForm.controls.sessionId.invalid) {
+            <p class="field-error">L’identifiant de session est obligatoire.</p>
+          }
+        </div>
+        <div>
+          <label for="exercise-link">Lien URI de l’exercice</label>
+          <input id="exercise-link" type="url" formControlName="lien" placeholder="https://…" />
+          @if (exerciseForm.controls.lien.touched && exerciseForm.controls.lien.invalid) {
+            <p class="field-error">Le lien de l’exercice est obligatoire.</p>
+          }
+        </div>
+      </div>
+      <button type="submit" [disabled]="actionStatus() === 'loading'">Déposer mon exercice</button>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="received-reviews-title">
+    <div class="section-heading">
+      <div>
+        <h2 id="received-reviews-title">Mes notes et commentaires reçus</h2>
+        <p>Les résultats ne révèlent jamais l’identité du relecteur.</p>
+      </div>
+      <button type="button" class="secondary" (click)="refreshReceivedReviews()" [disabled]="identityForm.controls.etudiantId.invalid">Actualiser</button>
+    </div>
+    @if (reviewsStatus() === 'idle') {
+      <p class="request-status">Choisissez votre nom pour consulter vos résultats.</p>
+    }
+    @if (reviewsStatus() === 'loading') {
+      <p class="request-status" role="status">Chargement des résultats…</p>
+    }
+    @if (reviewsStatus() === 'error' && reviewsError(); as error) {
+      <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+    }
+    @if (reviewsStatus() === 'empty') {
+      <p class="request-status">Aucune note ou aucun commentaire n’est disponible pour le moment.</p>
+    }
+    @if (reviewsStatus() === 'success') {
+      <div class="reviews-list">
+        @for (review of receivedReviews(); track review.exerciceId) {
+          <article class="review">
+            <h3>Exercice #{{ review.exerciceId }} · Session #{{ review.sessionId }}</h3>
+            <p><a [href]="review.lienExercice" target="_blank" rel="noopener">Consulter l’exercice</a></p>
+            <p><strong>Note :</strong> {{ review.note }}/20</p>
+            <p><strong>Commentaire :</strong> {{ review.commentaire }}</p>
+          </article>
+        }
+      </div>
+    }
+  </section>
+</section>

@@ -1,17 +1,11 @@
 import { Routes } from '@angular/router';
 import { PlaceholderPageComponent } from './features/placeholder/placeholder-page.component';
+import { StudentPageComponent } from './features/student/student-page.component';
 import { TrainerPageComponent } from './features/trainer/trainer-page.component';
 
 export const routes: Routes = [
   { path: 'formateur', component: TrainerPageComponent },
-  {
-    path: 'etudiant',
-    component: PlaceholderPageComponent,
-    data: {
-      title: 'Parcours étudiant',
-      description: 'La sélection d’identité, le marquage de présence et le dépôt d’exercice arrivent dans le ticket dédié.',
-    },
-  },
+  { path: 'etudiant', component: StudentPageComponent },
   {
     path: 'relecteur',
     component: PlaceholderPageComponent,
