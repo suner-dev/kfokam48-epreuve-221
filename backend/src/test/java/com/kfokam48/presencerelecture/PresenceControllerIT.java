@@ -1,10 +1,12 @@
 package com.kfokam48.presencerelecture;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kfokam48.presencerelecture.presence.api.MarkPresenceRequest;
 import com.kfokam48.presencerelecture.session.api.CreateSessionRequest;
@@ -42,13 +44,17 @@ class PresenceControllerIT {
                         .content(objectMapper.writeValueAsString(new MarkPresenceRequest(code, 1L))))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/api/sessions/{id}/presences", sessionId))
+        String presences = mockMvc.perform(get("/api/sessions/{id}/presences", sessionId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].etudiantId").value(1))
-                .andExpect(jsonPath("$[0].nom").value("Dupont"))
-                .andExpect(jsonPath("$[0].present").value(true))
-                .andExpect(jsonPath("$[0].source").value("ETUDIANT"))
-                .andExpect(jsonPath("$[0].marqueeAt").isString());
+                .andReturn().getResponse().getContentAsString();
+        JsonNode rows = objectMapper.readTree(presences);
+        assertThat(row(rows, 1L).get("nom").asText()).isEqualTo("Dupont");
+        assertThat(row(rows, 1L).get("present").asBoolean()).isTrue();
+        assertThat(row(rows, 1L).get("source").asText()).isEqualTo("ETUDIANT");
+        assertThat(row(rows, 1L).get("marqueeAt").isTextual()).isTrue();
+        assertThat(row(rows, 4L).get("present").asBoolean()).isFalse();
+        assertThat(row(rows, 4L).get("source").isNull()).isTrue();
+        assertThat(row(rows, 4L).get("marqueeAt").isNull()).isTrue();
     }
 
     @Test
@@ -76,6 +82,15 @@ class PresenceControllerIT {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("DEJA_PRESENT"))
                 .andExpect(jsonPath("$.message").isString());
+    }
+
+    private JsonNode row(JsonNode rows, long studentId) {
+        for (JsonNode row : rows) {
+            if (row.get("etudiantId").asLong() == studentId) {
+                return row;
+            }
+        }
+        throw new AssertionError("Étudiant absent du roster : " + studentId);
     }
 
     @Test

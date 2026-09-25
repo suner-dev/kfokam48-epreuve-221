@@ -15,6 +15,9 @@ import com.kfokam48.presencerelecture.session.application.SessionService;
 import com.kfokam48.presencerelecture.session.domain.SessionCours;
 import java.time.Clock;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,13 +77,16 @@ public class PresenceService {
 
     @Transactional(readOnly = true)
     public List<PresenceSessionResponse> findBySession(Long sessionId) {
-        sessionService.require(sessionId);
-        return repository.findBySessionId(sessionId).stream()
-                .map(presence -> {
-                    Etudiant etudiant = etudiantService.require(presence.getEtudiantId());
+        SessionCours session = sessionService.require(sessionId);
+        Map<Long, Presence> presenceParEtudiant = repository.findBySessionId(sessionId).stream()
+                .collect(Collectors.toMap(Presence::getEtudiantId, Function.identity()));
+        return etudiantService.findByPromotion(session.getPromotionId()).stream()
+                .map(etudiant -> {
+                    Presence presence = presenceParEtudiant.get(etudiant.getId());
                     return new PresenceSessionResponse(
-                            presence.getEtudiantId(), etudiant.getNom(), true,
-                            presence.getSource(), presence.getMarqueeAt()
+                            etudiant.getId(), etudiant.getNom(), presence != null,
+                            presence == null ? null : presence.getSource(),
+                            presence == null ? null : presence.getMarqueeAt()
                     );
                 })
                 .sorted((left, right) -> left.nom().compareTo(right.nom()))
