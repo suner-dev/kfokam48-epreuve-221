@@ -60,7 +60,27 @@ Corrigé en sortant le comptage anti-devinette de la transaction de présence.
 **2. Le changement de besoin** (« deux pairs par exercice, moyenne des deux, provisoire si un seul a
 rendu ») — **réalisé et livré** (issues #70 et #71, PR #76).
 
-**Ce qui a été livré** (PR #76, branche `feature/70-deux-relecteurs`) : l'analyse remise à jour
+**3. Les deux `PUT` que le backend livrait et que l'écran ne montrait pas** — **livré et vérifié**
+(issues #63 et #64, PR #80). Le tableau des API du README annonçait `200` sur `PUT
+/api/exercices/{id}` et `PUT /api/relectures/{id}`, et le backend les livre depuis l'issue #14 — mais
+un `grep` sur le frontend ne trouvait aucun `http.put`. Le README disait donc vrai d'un côté et
+faux de l'autre. L'écran étudiant expose le remplacement du lien tant que la relecture n'a pas
+commencé, l'écran relecteur propose la correction juste après un rendu, et le modèle
+`ExerciceSession` a été remis au niveau de l'API après l'enveloppe.
+
+**La limite que je n'ai pas contournée.** Aucune opération du contrat ne liste les relectures
+**déjà rendues** par un relecteur donné, `a-faire` ne renvoyant que les non rendues. La correction
+ne peut donc être offerte que sur la relecture dont l'identifiant est en mémoire, et l'écran le dit
+plutôt que de le dissimuler. Ajouter un endpoint pour lister mes relectures rendues aurait été plus
+confortable et hors contrat.
+
+**Un test qui devait évoluer.** `reviews-api.service.spec.ts` affirmait
+`expect('updateReview' in service).toBe(false)` : c'était la preuve de l'absence de correction.
+EF10 étant autorisé, l'assertion était devenue fausse ; elle vérifie maintenant l'URL, la méthode
+et le corps du PUT. C'est le genre de test qui devient un piège : il prouvait une absence, et une
+absence devient fausse sans qu'on la remarque.
+
+**Ce qui a été livré pour le changement de besoin** (PR #76, branche `feature/70-deux-relecteurs`) : l'analyse remise à jour
 dans un commit qui le dit — RG6 barrée et marquée annulée, RG20 créée, EF17 créée, H13 et H14
 ajoutées, contradiction secondaire Q8/Q9 tranchée par écrit, D2 en cardinalité `0..2` et D4 corrigé
 sur le caractère provisoire ; la migration V4 et le contrat ; le backend complet, prouvé par

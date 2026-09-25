@@ -49,8 +49,8 @@ donc pas de hash à déclarer. L'étape 5 ne compte pas dans le barème.
   présence par code, dépôt du lien d'exercice, relecture par un pair, tableau de synthèse par
   promotion — plus les écrans Angular formateur, étudiant et relecteur, la fin et la clôture de
   session, la présence manuelle du formateur, l'anonymat du relecteur, la correction de note et le
-  remplacement de lien, l'anti-devinette, la relecture par deux pairs avec moyenne et mention
-  provisoire, et le diagramme D4 (bonus).
+  remplacement de lien, la correction de note avant clôture, l'anti-devinette, la relecture par
+  deux pairs avec moyenne et mention provisoire, et le diagramme D4 (bonus).
 - **Ce qui marche et qui est prouvé** : 30 tests unitaires et 34 tests d'intégration, tous verts
   sur `./backend/mvnw clean verify`, plus un relevé des 17 appels manuels du contrat rejoué sur
   l'application Docker et consigné dans `docs/APPELS_MANUELS.md`.
@@ -58,9 +58,13 @@ donc pas de hash à déclarer. L'étape 5 ne compte pas dans le barème.
   notes, mention provisoire tant qu'un seul a rendu. Règle Q6 annulée et remplacée par RG20,
   migration V4 ajoutée, moyenne calculée par l'API et jamais recalculée dans le navigateur.
 - **Ce que j'ai laissé de côté, et pourquoi** : la coquille applicative « verre » (issues #58 à #61),
-  dont le sacrifice est écrit en section 3 du cahier des charges — le rendu visuel n'est pas noté ; et
-  l'affichage de la mention provisoire dans l'écran étudiant, le backend livrant déjà `note`,
-  `nbNotes` et `provisoire` mais l'écran ne les présentant pas encore.
+  dont le sacrifice est écrit en section 3 du cahier des charges — le rendu visuel n'est pas noté. C'est
+  le seul écart assumé.
+- **Une limite de contrat, déclarée plutôt que contournée** : la correction d'une note (EF10) n'est
+  proposée que pour la relecture que le relecteur vient de rendre dans la même visite. Aucune opération
+  du contrat ne liste les relectures **déjà rendues** par un relecteur donné, et en inventer une serait
+  sortir du contrat. Le même principe vaut pour l'anonymat : l'étudiant ne voit jamais l'identité des
+  relecteurs, le formateur est le seul à voir le tableau `relecteurs`.
 - **Limite structurelle assumée** : l'anti-devinette s'applique par `etudiantId` et non par
   appareil, faute d'authentification (Q1). Documenté en H4.
 

@@ -79,15 +79,19 @@
 
 | Version | Changement |
 |---|---|
+| v1.0 | Frontend : la note retenue, sa mention provisoire et le nombre de pairs reçus s'affichent ; le remplacement du lien (EF9) et la correction de note (EF10) sont exposés ; le modèle `ExerciceSession` est remis au niveau de l'API après l'enveloppe |
 | v1.0 | `CHANGELOG.md` écrit depuis l'historique Git et non depuis un récit |
 | v1.0 | Journal complété pour les étapes 3, 4 et 6, dont la question imposée sur le périmètre sacrifié |
 | v1.0 | Backlog trié, issues fermées, dépôt public vérifié en navigation privée |
 
 ## Limites connues de la v1.0
 
-- L'écran étudiant n'affiche pas encore la **mention provisoire** ni la moyenne : le backend livre
-  `note`, `nbNotes` et `provisoire`, le frontend doit encore les présenter. Le calcul, lui, est
-  fait par l'API et n'est jamais recalculé dans le navigateur (F3).
+- **La correction d'une note (EF10) n'est offerte que dans la visite qui suit le rendu.** Aucune
+  opération du contrat ne liste les relectures déjà rendues par un relecteur donné ; en inventer
+  une sortait du contrat. La limite est affichée dans l'écran, pas cachée.
+- Le jeu de démonstration est **antérieur** au changement de l'enveloppe : chaque exercice du seed
+  ne porte qu'une affectation, donc ses notes sont provisoires. C'est voulu, et c'est l'état « un
+  seul pair a rendu » qu'un correcteur doit pouvoir observer.
 - Le blocage anti-devinette s'applique par `etudiantId` et non par appareil, faute d'authentification
   (Q1). C'est documenté en H4.
 - L'étape 5 (épreuve Git) a été annulée : un seul dépôt public existe.
