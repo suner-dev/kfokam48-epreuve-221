@@ -69,6 +69,7 @@ class ReviewServiceTest {
 
         assertThat(response.note()).isEqualTo(Integer.parseInt(note));
         assertThat(review.getCommentaire()).isEqualTo("Bon travail.");
+        assertThat(review.getCommenceeAt()).isEqualTo(MAINTENANT);
         assertThat(review.getRendueAt()).isEqualTo(MAINTENANT);
         assertThat(exercise.getStatut()).isEqualTo(StatutExercice.RELU);
     }
