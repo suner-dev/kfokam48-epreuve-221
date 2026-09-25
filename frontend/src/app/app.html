@@ -1,0 +1,11 @@
+<header class="app-header">
+  <a class="brand" routerLink="/formateur">KFOKAM48</a>
+  <nav aria-label="Parcours de l’application">
+    <a routerLink="/formateur" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Formateur</a>
+    <a routerLink="/etudiant" routerLinkActive="active">Étudiant</a>
+    <a routerLink="/relecteur" routerLinkActive="active">Relecteur</a>
+  </nav>
+</header>
+<main>
+  <router-outlet />
+</main>

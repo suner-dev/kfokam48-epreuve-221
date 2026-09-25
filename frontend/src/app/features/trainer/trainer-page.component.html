@@ -1,0 +1,200 @@
+<section class="page" aria-labelledby="trainer-title">
+  <header class="page-header">
+    <p class="eyebrow">Parcours formateur</p>
+    <h1 id="trainer-title">Gérer une session et suivre la promotion</h1>
+    <p>Ouvrez une session, partagez le code de présence et consultez les données fournies par l’API.</p>
+  </header>
+
+  @if (promotionsStatus() === 'loading') {
+    <p class="request-status" role="status">Chargement des promotions…</p>
+  }
+  @if (promotionsStatus() === 'error' && promotionsError(); as error) {
+    <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+  }
+  @if (promotionsStatus() === 'empty') {
+    <p class="request-status">Aucune promotion n’est disponible.</p>
+  }
+
+  <section class="card" aria-labelledby="open-session-title">
+    <h2 id="open-session-title">Ouvrir une session</h2>
+    <form [formGroup]="sessionForm" (ngSubmit)="createSession()" novalidate>
+      <div class="form-grid">
+        <div>
+          <label for="promotion">Promotion</label>
+          <select id="promotion" formControlName="promotionId" (change)="onPromotionChanged()">
+            <option [ngValue]="0">Choisir une promotion</option>
+            @for (promotion of promotions(); track promotion.id) {
+              <option [ngValue]="promotion.id">{{ promotion.nom }}</option>
+            }
+          </select>
+          @if (sessionForm.controls.promotionId.touched && sessionForm.controls.promotionId.invalid) {
+            <p class="field-error">La promotion est obligatoire.</p>
+          }
+        </div>
+        <div>
+          <label for="titre">Titre de la session</label>
+          <input id="titre" type="text" formControlName="titre" autocomplete="off" />
+          @if (sessionForm.controls.titre.touched && sessionForm.controls.titre.invalid) {
+            <p class="field-error">Le titre est obligatoire.</p>
+          }
+        </div>
+      </div>
+      <button type="submit" [disabled]="actionStatus() === 'loading'">Ouvrir la session</button>
+    </form>
+  </section>
+
+  @if (actionStatus() === 'loading') {
+    <p class="request-status" role="status">Enregistrement en cours…</p>
+  }
+  @if (actionStatus() === 'success' && actionSuccess()) {
+    <p class="request-status success" role="status">{{ actionSuccess() }}</p>
+  }
+  @if (actionStatus() === 'error' && actionError(); as error) {
+    <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+  }
+
+  @if (currentSession(); as session) {
+    <section class="card session-card" aria-labelledby="current-session-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="current-session-title">Session active : {{ session.titre }}</h2>
+          <p>Code de présence : <strong class="presence-code">{{ session.code }}</strong></p>
+        </div>
+        <button type="button" class="secondary" (click)="refreshCurrentSession()">Actualiser</button>
+      </div>
+      <dl class="session-dates">
+        <div><dt>Ouverte le</dt><dd>{{ formatDate(session.ouvertureAt) }}</dd></div>
+        <div><dt>Code valable jusqu’au</dt><dd>{{ formatDate(session.expirationAt) }}</dd></div>
+        <div><dt>Terminée le</dt><dd>{{ formatDate(session.finAt) }}</dd></div>
+        <div><dt>Clôturée le</dt><dd>{{ formatDate(session.clotureAt) }}</dd></div>
+      </dl>
+      @if (sessionStatus() === 'loading') {
+        <p class="request-status" role="status">Actualisation de la session…</p>
+      }
+      @if (sessionStatus() === 'error' && sessionError(); as error) {
+        <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+      }
+      <div class="actions">
+        @if (!session.finAt && !session.clotureAt) {
+          <button type="button" (click)="endSession()" [disabled]="actionStatus() === 'loading'">Terminer la session</button>
+        }
+        @if (!session.clotureAt) {
+          <button type="button" class="danger" (click)="closeSession()" [disabled]="actionStatus() === 'loading'">Clôturer la session</button>
+        }
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="manual-presence-title">
+      <h2 id="manual-presence-title">Ajouter une présence manuelle</h2>
+      @if (studentsStatus() === 'loading') {
+        <p class="request-status" role="status">Chargement des étudiants…</p>
+      }
+      @if (studentsStatus() === 'error' && studentsError(); as error) {
+        <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+      }
+      @if (studentsStatus() === 'empty') {
+        <p class="request-status">Aucun étudiant n’est inscrit dans cette promotion.</p>
+      }
+      <form [formGroup]="manualPresenceForm" (ngSubmit)="addManualPresence()" novalidate>
+        <label for="manual-student">Étudiant</label>
+        <div class="inline-form">
+          <select id="manual-student" formControlName="etudiantId" [disabled]="studentsStatus() !== 'success' || !!session.clotureAt">
+            <option [ngValue]="0">Choisir un étudiant</option>
+            @for (student of students(); track student.id) {
+              <option [ngValue]="student.id">{{ student.prenom }} {{ student.nom }}</option>
+            }
+          </select>
+          <button type="submit" [disabled]="!!session.clotureAt || actionStatus() === 'loading'">Ajouter avec la source FORMATEUR</button>
+        </div>
+        @if (manualPresenceForm.controls.etudiantId.touched && manualPresenceForm.controls.etudiantId.invalid) {
+          <p class="field-error">La sélection d’un étudiant est obligatoire.</p>
+        }
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="presences-title">
+      <h2 id="presences-title">Détail des présences</h2>
+      @if (presencesStatus() === 'loading') {
+        <p class="request-status" role="status">Chargement des présences…</p>
+      }
+      @if (presencesStatus() === 'error' && presencesError(); as error) {
+        <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+      }
+      @if (presencesStatus() === 'empty') {
+        <p class="request-status">Aucune présence n’a encore été enregistrée.</p>
+      }
+      @if (presencesStatus() === 'success') {
+        <div class="table-scroll" tabindex="0">
+          <table>
+            <thead><tr><th>Étudiant</th><th>Présent</th><th>Source</th><th>Marqué le</th></tr></thead>
+            <tbody>
+              @for (presence of presences(); track presence.etudiantId) {
+                <tr><td>{{ presence.nom }}</td><td>{{ presence.present ? 'Oui' : 'Non' }}</td><td>{{ presence.source ?? '—' }}</td><td>{{ formatDate(presence.marqueeAt) }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <section class="card" aria-labelledby="exercises-title">
+      <h2 id="exercises-title">Détail des exercices</h2>
+      @if (exercisesStatus() === 'loading') {
+        <p class="request-status" role="status">Chargement des exercices…</p>
+      }
+      @if (exercisesStatus() === 'error' && exercisesError(); as error) {
+        <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+      }
+      @if (exercisesStatus() === 'empty') {
+        <p class="request-status">Aucun exercice n’a encore été déposé.</p>
+      }
+      @if (exercisesStatus() === 'success') {
+        <div class="table-scroll" tabindex="0">
+          <table>
+            <thead><tr><th>Exercice</th><th>Étudiant</th><th>Statut</th><th>Relecteur affecté</th><th>Commencée le</th><th>Rendue le</th></tr></thead>
+            <tbody>
+              @for (exercise of exercises(); track exercise.id) {
+                <tr>
+                  <td>#{{ exercise.id }}</td><td>#{{ exercise.etudiantId }}</td><td>{{ statusLabel(exercise.statut) }}</td>
+                  <td>{{ exercise.relecteurId ?? 'Aucun' }}</td><td>{{ formatDate(exercise.commenceeAt) }}</td><td>{{ formatDate(exercise.rendueAt) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+
+  <section class="card" aria-labelledby="dashboard-title">
+    <h2 id="dashboard-title">Tableau de la promotion</h2>
+    <p>La moyenne affichée est celle renvoyée par l’API, sans recalcul côté navigateur.</p>
+    @if (dashboardStatus() === 'idle') {
+      <p class="request-status">Choisissez une promotion pour consulter le tableau.</p>
+    }
+    @if (dashboardStatus() === 'loading') {
+      <p class="request-status" role="status">Chargement du tableau…</p>
+    }
+    @if (dashboardStatus() === 'error' && dashboardError(); as error) {
+      <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+    }
+    @if (dashboardStatus() === 'empty') {
+      <p class="request-status">Le tableau ne contient encore aucun étudiant.</p>
+    }
+    @if (dashboardStatus() === 'success') {
+      <div class="table-scroll" tabindex="0">
+        <table>
+          <thead><tr><th>Étudiant</th><th>Présences</th><th>Exercices déposés</th><th>Moyenne reçue</th><th>Relectures en attente</th></tr></thead>
+          <tbody>
+            @for (student of dashboard(); track student.etudiantId) {
+              <tr>
+                <td>{{ student.nom }}</td><td>{{ student.presences }}</td><td>{{ student.exercicesDeposes }}</td>
+                <td>{{ student.moyenne ?? '—' }}</td><td>{{ student.relecturesEnAttente }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</section>
