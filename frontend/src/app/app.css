@@ -1,0 +1,52 @@
+:host {
+  color: #1e293b;
+  display: block;
+  min-height: 100vh;
+}
+
+.app-header {
+  align-items: center;
+  background: #102a43;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem max(1rem, calc((100vw - 72rem) / 2));
+}
+
+.brand,
+nav a {
+  border-radius: .3rem;
+  color: #fff;
+  display: inline-block;
+  font-weight: 700;
+  padding: .45rem .65rem;
+  text-decoration: none;
+}
+
+.brand {
+  font-size: 1.2rem;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+
+nav a.active,
+nav a:hover {
+  background: #0ea5e9;
+}
+
+nav a:focus-visible,
+.brand:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+main {
+  margin: 0 auto;
+  max-width: 72rem;
+  padding: 2rem 1rem;
+}
