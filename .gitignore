@@ -4,8 +4,9 @@ target/
 .mvn/timing.properties
 dependency-reduced-pom.xml
 *.class
-*.jar
 *.war
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
 # ... SAUF le wrapper mvnw qui doit être commité (contrainte B1)
 
 # ===== Node / Angular (frontend) =====

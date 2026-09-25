@@ -14,6 +14,7 @@ sequenceDiagram
     participant C as PresenceController
     participant S as PresenceService
     participant DB as Repository / BDD
+    participant A as RestControllerAdvice
 
     E->>F: choisit son nom + saisit le code
     F->>C: POST /api/presences { code, etudiantId }
@@ -21,17 +22,21 @@ sequenceDiagram
 
     alt code inconnu
         S->>DB: recherche session par code → aucune
-        S-->>C: CodeInconnuException
-        C-->>F: 400 { code:"CODE_INCONNU", message:"Code de présence inconnu." }
-    else code expiré (RG1) — now > expirationAt
+        S-->>A: CodeInconnuException
+        A-->>F: 400 { code:"CODE_INCONNU", message:"Code de présence inconnu." }
+    else code expiré (RG1) — now >= expirationAt
         S->>DB: session trouvée, expiration_at dépassé
-        S-->>C: CodeExpireException
-        C-->>F: 410 { code:"CODE_EXPIRE", message:"Le code de présence a expiré." }
-    else étudiant déjà présent (RG3) — UNIQUE(session_id, etudiant_id)
+        S-->>A: CodeExpireException
+        A-->>F: 410 { code:"CODE_EXPIRE", message:"Le code de présence a expiré." }
+    else session terminée (RG2/H7)
+        S->>DB: vérifie finAt
+        S-->>A: SessionTermineeException
+        A-->>F: 410 { code:"SESSION_TERMINEE", message:"La session est terminée." }
+    else étudiant déjà présent (RG3)
         S->>DB: SELECT presence(session_id, etudiant_id) → existe
-        S-->>C: DejaPresentException
-        C-->>F: 409 { code:"DEJA_PRESENT", message:"Vous êtes déjà présent pour cette session." }
-    else cas nominal — code valide, non expiré, jamais présent
+        S-->>A: DejaPresentException
+        A-->>F: 409 { code:"DEJA_PRESENT", message:"Vous êtes déjà présent pour cette session." }
+    else cas nominal — code valide, avant expiration et fin, jamais présent
         S->>DB: INSERT presence(source=ETUDIANT, marquee_at=now)
         DB-->>S: presence(id)
         S-->>C: Presence(id, sessionId, etudiantId, ETUDIANT)
@@ -39,7 +44,7 @@ sequenceDiagram
         F-->>E: « Présence enregistrée »
     end
 
-    Note over C: Toute exception remonte par @RestControllerAdvice (B4) et<br/>produit le corps { code, message } — jamais une stack trace.
+    Note over C,A: Les exceptions sont transformées par @RestControllerAdvice (B4)<br/>en { code, message }, jamais en stack trace.
 ```
 
 **Vérification de conformité au contrat (`POST /api/presences`) :**
@@ -49,8 +54,9 @@ sequenceDiagram
 | Nominal | `201` + `{id, sessionId, etudiantId, source}` | — | ✅ |
 | Code inconnu | `400` | `CODE_INCONNU` | ✅ |
 | Code expiré (RG1) | `410` | `CODE_EXPIRE` | ✅ |
+| Session terminée (RG2/H7) | `410` | `SESSION_TERMINEE` | ✅ |
 | Déjà présent (RG3) | `409` | `DEJA_PRESENT` | ✅ |
 
-> Remarque (hors du champ de D3, traitée en EF12/RG4) : le 5ᵉ échec de saisie déclenche un
-> `429 TROP_ESSAIS` (hypothèse **H5** du cahier) — non représenté ici pour ne pas masquer les
-> trois cas exigés par le barème.
+> La règle anti-devinte H5 conserve `400 TROP_ESSAIS` à partir de la cinquième saisie invalide ;
+> elle n'est pas représentée ici pour laisser visibles les trois cas d'erreur explicitement exigés
+> par le sujet.
