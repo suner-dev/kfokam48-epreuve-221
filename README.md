@@ -44,7 +44,7 @@ curl -s http://localhost:8080/api/promotions
   tous sur H2, sans aucune base locale à installer.
 - Tests unitaires backend : `./backend/mvnw test`
 - Frontend : `cd frontend && npm ci && npm run build`
-- Tests frontend : `cd frontend && CI=true npx ng test --watch=false`
+- Tests frontend : `cd frontend && CI=true npx ng test --watch=false` — 13 fichiers, 47 tests
 - Appels manuels du contrat : `bash docs/appels-manuels.sh` — rejoue les 17 appels de la
   consigne 14.5 et affiche commande, statut et corps. Le relevé verbatim du dernier passage
   est dans [`docs/APPELS_MANUELS.md`](docs/APPELS_MANUELS.md).
