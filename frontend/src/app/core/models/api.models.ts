@@ -97,8 +97,13 @@ export interface RelectureRecue {
   exerciceId: number;
   sessionId: number;
   lienExercice: string;
-  note: number;
+  /** Note retenue : moyenne des notes rendues par les pairs, calculée par l'API (F3). */
+  note: number | null;
   commentaire: string;
+  /** Nombre de pairs ayant effectivement rendu leur note : 0, 1 ou 2. */
+  nbNotes: number;
+  /** Vrai tant que les deux pairs n'ont pas tous deux rendu. */
+  provisoire: boolean;
 }
 
 export interface RelectureAFaire {

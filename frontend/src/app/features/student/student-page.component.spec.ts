@@ -1,26 +1,49 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { Observable, of, Subject, throwError } from 'rxjs';
-import { Promotion } from '../../core/models/api.models';
+import { Promotion, RelectureRecue } from '../../core/models/api.models';
 import { ExercisesApiService } from '../../core/services/exercises-api.service';
 import { PresencesApiService } from '../../core/services/presences-api.service';
 import { ReferencesApiService } from '../../core/services/references-api.service';
 import { ReviewsApiService } from '../../core/services/reviews-api.service';
 import { StudentPageComponent } from './student-page.component';
 
-async function createComponent(getPromotions: () => Observable<Promotion[]>) {
+function review(overrides: Partial<RelectureRecue>): RelectureRecue {
+  return {
+    exerciceId: 1,
+    sessionId: 1,
+    lienExercice: 'https://exemple.test/exercice/1',
+    note: null,
+    commentaire: '',
+    nbNotes: 0,
+    provisoire: true,
+    ...overrides,
+  };
+}
+
+async function createComponent(
+  getPromotions: () => Observable<Promotion[]>,
+  getRecues: () => Observable<RelectureRecue[]> = () => of([]),
+  etudiantId = 0,
+) {
   await TestBed.configureTestingModule({
     imports: [StudentPageComponent],
     providers: [
       { provide: ReferencesApiService, useValue: { getPromotions, getEtudiants: () => of([]) } },
       { provide: PresencesApiService, useValue: {} },
       { provide: ExercisesApiService, useValue: {} },
-      { provide: ReviewsApiService, useValue: {} },
+      { provide: ReviewsApiService, useValue: { getReceivedReviews: getRecues } },
     ],
   }).compileComponents();
 
   const fixture = TestBed.createComponent(StudentPageComponent);
   fixture.detectChanges();
+  if (etudiantId > 0) {
+    // Choisir son nom est le geste qui declenche le chargement des resultats recus.
+    fixture.componentInstance.identityForm.controls.etudiantId.setValue(etudiantId);
+    fixture.componentInstance.onStudentChanged();
+    fixture.detectChanges();
+  }
   return fixture;
 }
 
@@ -55,5 +78,49 @@ describe('StudentPageComponent', () => {
     fixture.detectChanges();
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('KFOKAM48-2026');
+  });
+
+  // Enveloppe étape 3 : la note affichée vient de l'API, le frontend ne la recalcule pas (F3).
+  it('marque la note comme provisoire tant qu’un seul des deux pairs a rendu', async () => {
+    const fixture = await createComponent(
+      () => of([{ id: 4, nom: 'KFOKAM48-2026' }]),
+      () => of([review({ note: 12, nbNotes: 1, provisoire: true, commentaire: 'Correct.' })]),
+      5,
+    );
+
+    fixture.detectChanges();
+    const texte = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(texte).toContain('12');
+    expect(texte).toContain('1 note reçue sur 2');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.badge-provisoire')).not.toBeNull();
+  });
+
+  it('n’indique plus provisoire quand les deux pairs ont rendu', async () => {
+    const fixture = await createComponent(
+      () => of([{ id: 4, nom: 'KFOKAM48-2026' }]),
+      () => of([review({ note: 14, nbNotes: 2, provisoire: false, commentaire: 'Très bien.' })]),
+      5,
+    );
+
+    fixture.detectChanges();
+    const texte = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(texte).toContain('14');
+    expect(texte).toContain('2 notes reçues sur 2');
+    // Le badge, et non le texte d'explication qui emploie le mot.
+    expect((fixture.nativeElement as HTMLElement).querySelector('.badge-provisoire')).toBeNull();
+  });
+
+  it('affiche une attente plutôt qu’une note absente', async () => {
+    const fixture = await createComponent(
+      () => of([{ id: 4, nom: 'KFOKAM48-2026' }]),
+      () => of([review({ note: null, nbNotes: 0, provisoire: true })]),
+      5,
+    );
+
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('en attente d’une note');
   });
 });
