@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Observable, of, Subject, throwError } from 'rxjs';
 import { Promotion } from '../../core/models/api.models';
@@ -6,12 +7,15 @@ import { ReferencesApiService } from '../../core/services/references-api.service
 import { ReviewsApiService } from '../../core/services/reviews-api.service';
 import { ReviewerPageComponent } from './reviewer-page.component';
 
-async function createComponent(getPromotions: () => Observable<Promotion[]>) {
+async function createComponent(
+  getPromotions: () => Observable<Promotion[]>,
+  submitReview: (body: { note: number; commentaire: string }) => Observable<unknown> = () => of(undefined),
+) {
   await TestBed.configureTestingModule({
     imports: [ReviewerPageComponent],
     providers: [
       { provide: ReferencesApiService, useValue: { getPromotions, getEtudiants: () => of([]) } },
-      { provide: ReviewsApiService, useValue: {} },
+      { provide: ReviewsApiService, useValue: { submitReview } },
     ],
   }).compileComponents();
 
@@ -43,6 +47,24 @@ describe('ReviewerPageComponent', () => {
 
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('PROMOTION_INCONNUE');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('La promotion demandée est inconnue.');
+  });
+
+  it('refuse une note décimale avant l’appel API', async () => {
+    const submitReview = vi.fn(() => of(undefined));
+    const fixture = await createComponent(() => of([]), submitReview);
+    const component = fixture.componentInstance;
+    component.activeReview.set({
+      relectureId: 7,
+      exerciceId: 8,
+      lienExercice: 'https://example.test/exercice',
+      commenceeAt: null,
+    });
+    component.reviewForm.setValue({ note: 12.5, commentaire: 'Commentaire valide.' });
+
+    component.submitReview();
+
+    expect(component.reviewForm.controls.note.hasError('integer')).toBe(true);
+    expect(submitReview).not.toHaveBeenCalled();
   });
 
   it('affiche les promotions après un chargement réussi', async () => {

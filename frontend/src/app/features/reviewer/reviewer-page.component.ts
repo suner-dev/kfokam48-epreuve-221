@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   Etudiant,
@@ -11,6 +11,14 @@ import {
 import { toRequestError } from '../../core/services/api-error';
 import { ReferencesApiService } from '../../core/services/references-api.service';
 import { ReviewsApiService } from '../../core/services/reviews-api.service';
+
+const integerValidator = (control: AbstractControl): ValidationErrors | null => {
+  const value = control.value;
+  if (value === null || value === '') {
+    return { required: true };
+  }
+  return Number.isInteger(Number(value)) ? null : { integer: true };
+};
 
 @Component({
   selector: 'app-reviewer-page',
@@ -31,7 +39,7 @@ export class ReviewerPageComponent {
   });
 
   readonly reviewForm = this.formBuilder.nonNullable.group({
-    note: [0, [Validators.min(0), Validators.max(20)]],
+    note: [0, [integerValidator, Validators.min(0), Validators.max(20)]],
     commentaire: ['', [Validators.required]],
   });
 
