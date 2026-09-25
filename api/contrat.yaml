@@ -133,7 +133,7 @@ paths:
         "400": { $ref: "#/components/responses/Erreur" }   # NOTE_INVALIDE
         "403": { $ref: "#/components/responses/Erreur" }   # AUTO_RELECTURE
         "404": { $ref: "#/components/responses/Erreur" }   # RELECTURE_INCONNUE
-        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_RENDUE
+        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_RENDUE / RELECTURE_NON_ASSIGNEE
         "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
     put:
       summary: "Q10 / RG9 — Correction d'une relecture tant que la session n'est pas clôturée (honore Q10 sans toucher au POST imposé)"
@@ -429,7 +429,7 @@ paths:
                   commenceeAt: { type: string, format: date-time }
         "403": { $ref: "#/components/responses/Erreur" }   # AUTO_RELECTURE
         "404": { $ref: "#/components/responses/Erreur" }   # RELECTURE_INCONNUE
-        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_COMMENCEE
+        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_COMMENCEE / RELECTURE_NON_ASSIGNEE
         "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
 
   /api/exercices/{id}:

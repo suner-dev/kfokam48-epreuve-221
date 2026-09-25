@@ -1,6 +1,7 @@
 package com.kfokam48.presencerelecture;
 
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -27,6 +28,14 @@ class SessionControllerIT {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Test
+    void refuseUneMethodeHttpNonAutorisee() throws Exception {
+        mockMvc.perform(delete("/api/sessions/1"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("METHODE_NON_AUTORISEE"))
+                .andExpect(jsonPath("$.message").isString());
+    }
 
     @Test
     void exposeLeDetailDuneSession() throws Exception {
