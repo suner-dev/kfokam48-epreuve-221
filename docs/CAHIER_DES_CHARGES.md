@@ -138,7 +138,7 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 | **RG15** | Une session **clôturée** est en lecture seule (plus de dépôt, auto-présence, remplacement, rendu ou correction) | Q10/Q12 + hypothèse H1 |
 | **RG16** | Un même étudiant ne dépose **qu'un seul** exercice par session → sinon `409 EXERCICE_DEJA_DEPOSE` | contrat imposé `409 EXERCICE_DEJA_DEPOSE` |
 | **RG17** | `finAt` et `clotureAt` sont deux événements distincts ; la clôture directe termine aussi la session si nécessaire | hypothèse H7 |
-| **RG18** | Le premier `POST /api/relectures/{id}/debut` fixe `commenceeAt` ; l'opération est idempotente dans son effet | Q13 + hypothèse H8 |
+| **RG18** | Le premier `POST /api/relectures/{id}/debut` ou la première soumission de note fixe `commenceeAt` ; l'opération est idempotente dans son effet | Q13 + hypothèse H8 |
 | **RG19** | `relecturesEnAttente` compte les affectations dues à l'étudiant ; les exercices sans pair relèvent d'un indicateur Q11 distinct | Q11/Q16 + hypothèse H10 |
 
 ## 7. Zones d'ombre, hypothèses et contradictions tranchées
@@ -160,7 +160,7 @@ Priorités **Must / Should / Could**. Un critère se lit « quand … alors … 
 | **H5 — Le blocage anti-devinette (Q4/RG4) : quel périmètre et quel statut ?** Un code inconnu n'a pas de `sessionId` fiable. | Compter les saisies invalides par `etudiantId` déclaré ; à partir de la 5e, répondre `400 TROP_ESSAIS` pendant 120 s. | Conserve exactement les statuts imposés ; pas de nouveau `429`. Le compteur est remis à zéro après le blocage ou un succès. | Plus cohérent avec B2 que le 429 initialement envisagé. |
 | **H6 — Présenter un étudiant après l'expiration du code ?** | L'auto-marquage cesse ; le formateur peut encore ajouter `source=FORMATEUR` jusqu'à la clôture. | `POST /api/presences` → `410 CODE_EXPIRE` ; endpoint manuel disponible. | La correction manuelle Q14 est conservée. |
 | **H7 — La fin de session n'existe pas dans le modèle, bien que Q3 la distingue de la clôture Q12.** | Ajouter `finAt` et `POST /api/sessions/{id}/fin` ; à la fin, blocage de l'auto-marquage seul. Une clôture directe fixe aussi `finAt` si nécessaire. | **EF15, RG2/RG11/RG17**, D2, D3, D4 et endpoints de session sont alignés. | Élimine la confusion qui rendait RG2 et RG11 inapplicables. |
-| **H8 — Que signifie « commencé » pour Q13 ?** | Le premier appel explicite de démarrage fixe `commenceeAt` ; le remplacement du lien est alors refusé, même avant la note. | `POST /api/relectures/{id}/debut`, **EF9/EF16, RG12/RG18**. | Respecte littéralement Q13 au lieu de le confondre avec « note non rendue ». |
+| **H8 — Que signifie « commencé » pour Q13 ?** | Le premier appel explicite de démarrage ou la première soumission de note fixe `commenceeAt` ; le remplacement du lien est alors refusé, même avant la note. | `POST /api/relectures/{id}/debut`, **EF9/EF16, RG12/RG18**. | Respecte littéralement Q13 au lieu de le confondre avec « note non rendue ». |
 | **H9 — Q8 masque-t-il seulement le nom ou aussi l'identifiant du relecteur ?** | Masquer les deux dans les réponses destinées à l'auteur ; ne pas exposer l'auteur au relecteur dans la liste des tâches. | **EF14/RG14** ; endpoint `/relectures-recues` sans `relecteurId`. | Confidentialité renforcée, hypothèse locale explicite. |
 | **H10 — Une affectation sans relecteur doit-elle créer une ligne de relecture et qui la compte ?** | Créer une seule affectation par exercice avec `relecteurId` nullable ; `relecturesEnAttente` du tableau impose compte seulement les affectations attribuées à l'étudiant. | Distinguer l'indicateur Q11 (exercices en attente) de l'indicateur Q16 (tâches dues à l'étudiant). | Évite de faire croire qu'un exercice sans pair est dû à quelqu'un. |
 
@@ -240,4 +240,5 @@ produit parfait sans historique.
 | Version | Quand | Ce qui a changé et pourquoi |
 |---|---|---|
 | 1 | 25/09/2026 | Version initiale — analyse d'avant-code (14 EF, 16 RG, 1 contradiction Q10/Q15 tranchée, 6 zones d'ombre/hypothèses dont le trou « clôture »). |
+| 1.1 | 25/09/2026 | Audit de cohérence : fin de session distincte de la clôture (H7), démarrage de relecture distinct de la note rendue (H8), anonymat et compteurs Q11/Q16 précisés (H9/H10), priorité des dépendancesMust revue, endpoints de détail et backlog corrigés. |
 | _2 (à venir)_ | _après Étape 3_ | _Mettre à jour suite à l'enveloppe (bug + changement de besoin) : sections impactées et diagrammes D2/D3. Le sujet rend une partie de l'analyse fausse → correction obligatoire et tracée ici._ |

@@ -38,7 +38,7 @@
 - **Critères :** `GET /api/tableau?promotionId=` → `200` la liste imposée `{etudiantId, nom, presences, exercicesDeposes, moyenne (nullable), relecturesEnAttente}` ; `relecturesEnAttente` compte les tâches dues à l'étudiant, tandis que `GET /api/sessions/{id}/exercices` rend visibles les exercices en attente Q11. Promotion inconnue → `404 PROMOTION_INCONNUE`. La moyenne vient de l'API (ENF7/F3).
 
 ### #7 — En tant qu'étudiant, je choisis mon nom dans une liste (sans mot de passe)
-- **Renvois :** EF13 · H4 · Q1 (réponse non utile, retenue en exclusion d'auth)
+- **Renvois :** EF13 · H4 · Q1 (authentification exclue, sélection d'identité incluse)
 - **Critères :** `GET /api/etudiants?promotionId=` alimente l'écran étudiant ; aucune saisie d'identifiant.
 
 ### #8 — En tant que formateur, j'ajoute une présence à la main et elle se distingue
@@ -63,8 +63,9 @@
 
 ## Stories SHOULD (après l'enveloppe / v1.0 si le temps le permet)
 
-> La clôture (#13) est néanmoins une dépendance **Must** de Q10/Q12 : elle est listée ici pour
-> préserver l'ordre de lecture initial, mais elle doit être livrée avant de déclarer Q10/Q12 complets.
+> Cette section contient aussi #13 et #14 : #13 est une dépendance **Must** de Q10/Q12, et #14
+> contient EF16 (**Must**) avec EF9/EF10 (Should). Les échéances déclarées priment sur l'ordre de
+> présentation.
 
 ### #13 — En tant que formateur, je clôture une session (elle devient lecture seule)
 - **Priorité : Must (dépendance Q10/Q12)** · **Renvois :** EF11 · EF15 · RG9 · RG15 · **H1/H7**
@@ -72,7 +73,7 @@
 
 ### #14 — Je corrige une relecture et je remplace un lien avant l'échéance appropriate
 - **Renvois :** EF9 · EF10 · EF16 · RG9 · RG12 · RG18 · arbitrage **Q10** · **H8**
-- **Critères :** `POST /api/relectures/{id}/debut` fixe `commenceeAt` ; `PUT /api/relectures/{id}` est autorisé tant que `clotureAt IS NULL` et l'exercice reste `RELU` ; `PUT /api/exercices/{id}` est autorisé seulement tant que `commenceeAt IS NULL` (`409 RELECTURE_COMMENCEE` après démarrage).
+- **Critères :** `POST /api/relectures/{id}/debut` ou la première soumission de note fixe `commenceeAt` ; `PUT /api/relectures/{id}` est autorisé tant que `clotureAt IS NULL` et l'exercice reste `RELU` ; `PUT /api/exercices/{id}` est autorisé seulement tant que `commenceeAt IS NULL` (`409 RELECTURE_COMMENCEE` après démarrage).
 
 ## Stories COULD (si temps restant — backlog trié, non bloquant)
 

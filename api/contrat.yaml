@@ -13,6 +13,7 @@ info:
     Auteur : Ngansop Sumo Rainer · 221.
 servers:
   - url: http://localhost:8080
+security: []
 
 paths:
 
