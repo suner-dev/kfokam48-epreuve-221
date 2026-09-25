@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   Etudiant,
+  ExerciceSession,
   Promotion,
   RelectureRecue,
   RequestError,
@@ -43,9 +44,19 @@ export class StudentPageComponent {
     lien: ['', [Validators.required]],
   });
 
+  /** EF9, Q13, RG12 — un seul lien remplacé à la fois, celui de l'exercice choisi. */
+  readonly replaceForm = this.formBuilder.nonNullable.group({
+    exerciceId: [0, [Validators.min(1)]],
+    lien: ['', [Validators.required]],
+  });
+
   readonly promotions = signal<Promotion[]>([]);
   readonly students = signal<Etudiant[]>([]);
   readonly receivedReviews = signal<RelectureRecue[]>([]);
+  readonly myExercises = signal<ExerciceSession[]>([]);
+  readonly replaceStatus = signal<RequestStatus>('idle');
+  readonly replaceError = signal<RequestError | null>(null);
+  readonly replaceSuccess = signal<string | null>(null);
 
   readonly promotionsStatus = signal<RequestStatus>('loading');
   readonly studentsStatus = signal<RequestStatus>('idle');
@@ -133,6 +144,63 @@ export class StudentPageComponent {
           this.actionSuccess.set(`Votre exercice est déposé avec le statut ${exercise.statut}.`);
         },
         error: (error: unknown) => this.failAction(error),
+      });
+  }
+
+  /**
+   * Source de données autorisée, sans inventer d'endpoint (issue #63) : l'API ne propose
+   * que le détail par session, on filtre donc sur l'étudiant choisi. Le filtre est de
+   * présentation, il ne sert qu'a masquer au lecteur les exercices des autres.
+   */
+  loadMyExercises(sessionId: number): void {
+    const etudiantId = this.identityForm.controls.etudiantId.value;
+    if (sessionId < 1 || etudiantId < 1) {
+      this.myExercises.set([]);
+      return;
+    }
+    this.replaceStatus.set('loading');
+    this.replaceError.set(null);
+    this.exercisesApi
+      .getSessionExercises(sessionId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (exercices) => {
+          this.myExercises.set(exercices.filter((exercice) => exercice.etudiantId === etudiantId));
+          this.replaceStatus.set(this.myExercises().length > 0 ? 'success' : 'empty');
+        },
+        error: (error: unknown) => {
+          this.myExercises.set([]);
+          this.replaceStatus.set('error');
+          this.replaceError.set(toRequestError(error));
+        },
+      });
+  }
+
+  onMyExercisesRequested(): void {
+    this.replaceSuccess.set(null);
+    this.loadMyExercises(this.exerciseForm.controls.sessionId.value);
+  }
+
+  replaceLink(exerciceId: number): void {
+    const { lien } = this.replaceForm.getRawValue();
+    this.replaceForm.controls.lien.setValue(lien);
+    this.replaceStatus.set('loading');
+    this.replaceError.set(null);
+    this.replaceSuccess.set(null);
+    this.exercisesApi
+      .replaceExerciseLink(exerciceId, lien)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (exercice) => {
+          this.replaceStatus.set('success');
+          this.replaceSuccess.set(`Lien mis à jour. Le statut reste ${exercice.statut}.`);
+          this.loadMyExercises(this.exerciseForm.controls.sessionId.value);
+        },
+        error: (error: unknown) => {
+          // 409 RELECTURE_COMMENCEE et 410 SESSION_CLOTUREE sont affichés tels quels.
+          this.replaceStatus.set('error');
+          this.replaceError.set(toRequestError(error));
+        },
       });
   }
 

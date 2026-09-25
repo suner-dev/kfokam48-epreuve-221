@@ -38,6 +38,12 @@ export class ReviewerPageComponent {
     etudiantId: [{ value: 0, disabled: true }, [Validators.min(1)]],
   });
 
+  /** EF10 — les mêmes champs que le rendu, corrigés après coup. */
+  readonly correctionForm = this.formBuilder.nonNullable.group({
+    note: [0, [Validators.required, Validators.min(0), Validators.max(20), integerValidator]],
+    commentaire: ['', []],
+  });
+
   readonly reviewForm = this.formBuilder.nonNullable.group({
     note: [0, [integerValidator, Validators.min(0), Validators.max(20)]],
     commentaire: ['', [Validators.required]],
@@ -47,6 +53,14 @@ export class ReviewerPageComponent {
   readonly students = signal<Etudiant[]>([]);
   readonly pendingReviews = signal<RelectureAFaire[]>([]);
   readonly activeReview = signal<RelectureAFaire | null>(null);
+  /**
+   * EF10, Q10, RG9 — la relecture que je viens de rendre dans cette visite. Aucune opération
+   * du contrat ne liste les relectures DÉJÀ rendues par un relecteur donné, et inventer un
+   * endpoint pour les retrouver serait sort du contrat. La correction est donc offerte sur
+   * la seule relecture dont l'identifiant est déjà en mémoire, ce que l'issue #64 autorise
+   * explicitement et déclare comme limite.
+   */
+  readonly lastRenderedReview = signal<{ relectureId: number; note: number; commentaire: string } | null>(null);
 
   readonly promotionsStatus = signal<RequestStatus>('loading');
   readonly studentsStatus = signal<RequestStatus>('idle');
@@ -143,10 +157,47 @@ export class ReviewerPageComponent {
           this.activeReview.set(null);
           this.actionStatus.set('success');
           this.actionSuccess.set('Votre note et votre commentaire ont été enregistrés.');
+          // On garde la relecture rendue en mémoire pour proposer sa correction (EF10).
+          this.lastRenderedReview.set({
+            relectureId: activeReview.relectureId,
+            note: body.note,
+            commentaire: body.commentaire,
+          });
+          this.correctionForm.setValue({ note: body.note, commentaire: body.commentaire });
           const etudiantId = this.identityForm.controls.etudiantId.value;
           if (etudiantId > 0) {
             this.loadPendingReviews(etudiantId);
           }
+        },
+        error: (error: unknown) => this.failAction(error),
+      });
+  }
+
+  /**
+   * EF10 — un nouveau PUT annule la valeur précédente. Le backend, seul juge de la clôture,
+   * peut refuser : l'erreur est alors affichée telle quelle.
+   */
+  correctReview(): void {
+    const last = this.lastRenderedReview();
+    if (!last) {
+      return;
+    }
+    if (this.correctionForm.invalid) {
+      this.correctionForm.markAllAsTouched();
+      return;
+    }
+    const body = this.correctionForm.getRawValue();
+    this.actionStatus.set('loading');
+    this.actionError.set(null);
+    this.actionSuccess.set(null);
+    this.reviewsApi
+      .correctReview(last.relectureId, body)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.actionStatus.set('success');
+          this.actionSuccess.set(`Note corrigée : ${body.note}/20.`);
+          this.lastRenderedReview.set({ relectureId: last.relectureId, note: body.note, commentaire: body.commentaire });
         },
         error: (error: unknown) => this.failAction(error),
       });

@@ -75,13 +75,32 @@ export type StatutExercice =
   | 'EN_ATTENTE_VERROUILLE'
   | 'RELU_VERROUILLE';
 
+/** Une affectation de relecture d'un exercice. Deux depuis l'enveloppe de l'étape 3. */
+export interface AffectationRelecture {
+  relectureId: number;
+  relecteurId: number | null;
+  commenceeAt: string | null;
+  rendueAt: string | null;
+}
+
 export interface ExerciceSession {
   id: number;
   etudiantId: number;
   statut: StatutExercice;
+  /** Les affectations, une par pair. Le formateur est le seul à voir ces identifiants (Q8). */
+  relecteurs: AffectationRelecture[];
+  noteRetenue: number | null;
+  provisoire: boolean;
+  /** Première affectation, conservés pour les écrans d'avant l'enveloppe. */
   relecteurId: number | null;
+  relectureId: number | null;
   commenceeAt: string | null;
   rendueAt: string | null;
+}
+
+export interface ExerciceMisAJour {
+  id: number;
+  statut: StatutExercice;
 }
 
 export interface TableauEtudiant {

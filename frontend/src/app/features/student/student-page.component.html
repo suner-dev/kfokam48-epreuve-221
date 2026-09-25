@@ -104,6 +104,85 @@
     </form>
   </section>
 
+
+  <section class="card" aria-labelledby="my-exercises-title">
+    <div class="section-heading">
+      <div>
+        <h2 id="my-exercises-title">Mes exercices et remplacement du lien</h2>
+        <p>
+          Je peux remplacer le lien d’un de mes exercices tant que sa relecture n’a pas commencé
+          et que la session n’est pas clôturée. C’est l’API qui décide : si elle refuse, elle dit
+          pourquoi.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="secondary"
+        (click)="onMyExercisesRequested()"
+        [disabled]="identityForm.controls.etudiantId.invalid"
+      >
+        Voir mes exercices
+      </button>
+    </div>
+
+    @if (replaceStatus() === 'loading') {
+      <p class="request-status" role="status">Chargement de mes exercices…</p>
+    }
+    @if (replaceStatus() === 'error' && replaceError(); as error) {
+      <p class="request-status error" role="alert">@if (error.code) { {{ error.code }} — }{{ error.message }}</p>
+    }
+    @if (replaceStatus() === 'success' && replaceSuccess(); as succes) {
+      <p class="request-status" role="status">{{ succes }}</p>
+    }
+
+    <form [formGroup]="replaceForm" (ngSubmit)="replaceLink(replaceForm.controls.exerciceId.value)" novalidate>
+      @if (myExercises().length === 0) {
+        <p class="request-status">Aucun exercice à remplacer pour le moment.</p>
+      }
+      @for (exercice of myExercises(); track exercice.id) {
+        <article class="review">
+          <h3>Exercice #{{ exercice.id }} · {{ exercice.statut }}</h3>
+          <p>
+            @if (exercice.noteRetenue !== null) {
+              Note retenue {{ exercice.noteRetenue }}/20
+              @if (exercice.provisoire) { <span class="badge-provisoire">provisoire</span> }
+            } @else {
+              Aucune note pour le moment.
+            }
+          </p>
+          <div class="form-grid">
+            <div>
+              <label [for]="'replace-lien-' + exercice.id">Nouveau lien URI</label>
+              <input
+                [id]="'replace-lien-' + exercice.id"
+                type="url"
+                formControlName="lien"
+                placeholder="https://…"
+              />
+            </div>
+            <div>
+              <label [for]="'replace-exercice-' + exercice.id">Exercice</label>
+              <input
+                [id]="'replace-exercice-' + exercice.id"
+                type="number"
+                min="1"
+                formControlName="exerciceId"
+                [value]="exercice.id"
+                readonly
+              />
+            </div>
+          </div>
+          <button type="submit" [disabled]="replaceStatus() === 'loading' || exercice.commenceeAt !== null">
+            Remplacer le lien
+          </button>
+          @if (exercice.commenceeAt !== null) {
+            <p class="field-error">La relecture a commencé : le lien n’est plus remplaçable.</p>
+          }
+        </article>
+      }
+    </form>
+  </section>
+
   <section class="card" aria-labelledby="received-reviews-title">
     <div class="section-heading">
       <div>

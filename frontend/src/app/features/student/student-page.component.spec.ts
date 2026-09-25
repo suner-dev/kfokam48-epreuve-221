@@ -112,6 +112,71 @@ describe('StudentPageComponent', () => {
     expect((fixture.nativeElement as HTMLElement).querySelector('.badge-provisoire')).toBeNull();
   });
 
+  // EF9, Q13, RG12 — le bouton de remplacement n'est proposé que si la relecture n'a pas
+  // commencé : le frontend ne doit pas inviter à une action que l'API refusera.
+  it('propose de remplacer le lien tant que la relecture n’a pas commencé', async () => {
+    const fixture = await createComponent(
+      () => of([{ id: 4, nom: 'KFOKAM48-2026' }]),
+      () => of([]),
+      5,
+    );
+    fixture.componentInstance.replaceStatus.set('success');
+    fixture.componentInstance.myExercises.set([
+      {
+        id: 6,
+        etudiantId: 5,
+        statut: 'EN_ATTENTE_DE_RELECTURE',
+        relecteurs: [{ relectureId: 6, relecteurId: 7, commenceeAt: null, rendueAt: null }],
+        noteRetenue: null,
+        provisoire: true,
+        relecteurId: 7,
+        relectureId: 6,
+        commenceeAt: null,
+        rendueAt: null,
+      },
+    ]);
+    fixture.detectChanges();
+
+    const boutons = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button'),
+    );
+    const remplacement = boutons.find((bouton) => bouton.textContent?.includes('Remplacer le lien'));
+    expect(remplacement?.disabled).toBeFalsy();
+  });
+
+  it('ne propose pas de remplacer un lien quand la relecture a commencé', async () => {
+    const fixture = await createComponent(
+      () => of([{ id: 4, nom: 'KFOKAM48-2026' }]),
+      () => of([]),
+      5,
+    );
+    fixture.componentInstance.replaceStatus.set('success');
+    fixture.componentInstance.myExercises.set([
+      {
+        id: 6,
+        etudiantId: 5,
+        statut: 'RELU',
+        relecteurs: [
+          { relectureId: 6, relecteurId: 7, commenceeAt: '2026-09-25T08:00:00Z', rendueAt: '2026-09-25T08:05:00Z' },
+        ],
+        noteRetenue: 15,
+        provisoire: false,
+        relecteurId: 7,
+        relectureId: 6,
+        commenceeAt: '2026-09-25T08:00:00Z',
+        rendueAt: '2026-09-25T08:05:00Z',
+      },
+    ]);
+    fixture.detectChanges();
+
+    const boutons = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button'),
+    );
+    const remplacement = boutons.find((bouton) => bouton.textContent?.includes('Remplacer le lien'));
+    expect(remplacement?.disabled).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('n’est plus remplaçable');
+  });
+
   it('affiche une attente plutôt qu’une note absente', async () => {
     const fixture = await createComponent(
       () => of([{ id: 4, nom: 'KFOKAM48-2026' }]),
