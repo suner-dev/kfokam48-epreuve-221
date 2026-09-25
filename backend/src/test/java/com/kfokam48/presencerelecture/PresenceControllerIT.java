@@ -94,6 +94,25 @@ class PresenceControllerIT {
     }
 
     @Test
+    void bloqueApresCinqTentativesInvalidesSousLeMemeEtudiant() throws Exception {
+        String body = objectMapper.writeValueAsString(new MarkPresenceRequest("INCONNU", 4L));
+
+        for (int tentative = 0; tentative < 5; tentative++) {
+            mockMvc.perform(post("/api/presences")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("CODE_INCONNU"));
+        }
+
+        mockMvc.perform(post("/api/presences")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TROP_ESSAIS"));
+    }
+
+    @Test
     void refuseUnCodeInconnu() throws Exception {
         String body = objectMapper.writeValueAsString(new MarkPresenceRequest("INCONNU", 1L));
 

@@ -16,6 +16,7 @@ import com.kfokam48.presencerelecture.session.domain.SessionCours;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -25,10 +26,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class PresenceService {
+    private static final Set<String> INVALID_CODE_FAILURES = Set.of(
+            "CODE_INCONNU", "CODE_EXPIRE", "SESSION_TERMINEE", "SESSION_CLOTUREE"
+    );
+
     private final PresenceRepository repository;
     private final ExerciseService exerciseService;
     private final SessionService sessionService;
     private final EtudiantService etudiantService;
+    private final CodeAttemptService codeAttemptService;
     private final Clock clock;
 
     public PresenceService(
@@ -36,27 +42,38 @@ public class PresenceService {
             ExerciseService exerciseService,
             SessionService sessionService,
             EtudiantService etudiantService,
+            CodeAttemptService codeAttemptService,
             Clock clock
     ) {
         this.repository = repository;
         this.exerciseService = exerciseService;
         this.sessionService = sessionService;
         this.etudiantService = etudiantService;
+        this.codeAttemptService = codeAttemptService;
         this.clock = clock;
     }
 
     public PresenceResponse mark(MarkPresenceRequest request) {
-        SessionCours session = sessionService.requireByCode(request.code());
-        checkUsable(session);
-        Etudiant etudiant = etudiantService.require(request.etudiantId(), session.getPromotionId());
-        if (repository.findBySessionIdAndEtudiantId(session.getId(), etudiant.getId()).isPresent()) {
-            throw new ApiException(HttpStatus.CONFLICT, "DEJA_PRESENT", "La présence est déjà enregistrée pour cette session.");
+        codeAttemptService.checkBlocked(request.etudiantId());
+        try {
+            SessionCours session = sessionService.requireByCode(request.code());
+            checkUsable(session);
+            Etudiant etudiant = etudiantService.require(request.etudiantId(), session.getPromotionId());
+            if (repository.findBySessionIdAndEtudiantId(session.getId(), etudiant.getId()).isPresent()) {
+                throw new ApiException(HttpStatus.CONFLICT, "DEJA_PRESENT", "La présence est déjà enregistrée pour cette session.");
+            }
+            Presence presence = repository.save(new Presence(
+                    session.getId(), etudiant.getId(), SourcePresence.ETUDIANT, clock.instant()
+            ));
+            exerciseService.assignPending(session.getId());
+            codeAttemptService.registerSuccess(etudiant.getId());
+            return new PresenceResponse(presence.getId(), presence.getSessionId(), presence.getEtudiantId(), presence.getSource());
+        } catch (ApiException exception) {
+            if (INVALID_CODE_FAILURES.contains(exception.code())) {
+                codeAttemptService.registerFailure(request.etudiantId());
+            }
+            throw exception;
         }
-        Presence presence = repository.save(new Presence(
-                session.getId(), etudiant.getId(), SourcePresence.ETUDIANT, clock.instant()
-        ));
-        exerciseService.assignPending(session.getId());
-        return new PresenceResponse(presence.getId(), presence.getSessionId(), presence.getEtudiantId(), presence.getSource());
     }
 
     public PresenceResponse addManually(ManualPresenceRequest request) {

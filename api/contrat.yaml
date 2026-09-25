@@ -75,7 +75,7 @@ paths:
                   sessionId: { type: integer, format: int64 }
                   etudiantId: { type: integer, format: int64 }
                   source: { type: string, enum: [ETUDIANT, FORMATEUR] }
-        "400": { $ref: "#/components/responses/Erreur" }   # CODE_INCONNU · CHAMP_MANQUANT · ETUDIANT_INCONNU (hors promotion de la session)
+        "400": { $ref: "#/components/responses/Erreur" }   # CODE_INCONNU · CHAMP_MANQUANT · ETUDIANT_INCONNU (hors promotion de la session) · TROP_ESSAIS
         "409": { $ref: "#/components/responses/Erreur" }   # DEJA_PRESENT
         "410": { $ref: "#/components/responses/Erreur" }   # CODE_EXPIRE / SESSION_TERMINEE / SESSION_CLOTUREE
 
