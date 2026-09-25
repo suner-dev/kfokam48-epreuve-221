@@ -7,12 +7,14 @@ import com.kfokam48.presencerelecture.exercice.application.ExerciseService;
 import com.kfokam48.presencerelecture.presence.api.ManualPresenceRequest;
 import com.kfokam48.presencerelecture.presence.api.MarkPresenceRequest;
 import com.kfokam48.presencerelecture.presence.api.PresenceResponse;
+import com.kfokam48.presencerelecture.presence.api.PresenceSessionResponse;
 import com.kfokam48.presencerelecture.presence.domain.Presence;
 import com.kfokam48.presencerelecture.presence.domain.PresenceRepository;
 import com.kfokam48.presencerelecture.presence.domain.SourcePresence;
 import com.kfokam48.presencerelecture.session.application.SessionService;
 import com.kfokam48.presencerelecture.session.domain.SessionCours;
 import java.time.Clock;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,6 +70,21 @@ public class PresenceService {
         ));
         exerciseService.assignPending(session.getId());
         return new PresenceResponse(presence.getId(), presence.getSessionId(), presence.getEtudiantId(), presence.getSource());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PresenceSessionResponse> findBySession(Long sessionId) {
+        sessionService.require(sessionId);
+        return repository.findBySessionId(sessionId).stream()
+                .map(presence -> {
+                    Etudiant etudiant = etudiantService.require(presence.getEtudiantId());
+                    return new PresenceSessionResponse(
+                            presence.getEtudiantId(), etudiant.getNom(), true,
+                            presence.getSource(), presence.getMarqueeAt()
+                    );
+                })
+                .sorted((left, right) -> left.nom().compareTo(right.nom()))
+                .toList();
     }
 
     private void checkUsable(SessionCours session) {
