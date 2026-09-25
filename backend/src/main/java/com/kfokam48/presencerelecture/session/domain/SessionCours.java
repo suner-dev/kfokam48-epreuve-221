@@ -73,8 +73,6 @@ public class SessionCours {
     public void refreshWindow(Instant ouvertureAt, Instant expirationAt) {
         this.ouvertureAt = ouvertureAt;
         this.expirationAt = expirationAt;
-        this.finAt = null;
-        this.clotureAt = null;
     }
 
     public void finish(Instant finAt) {

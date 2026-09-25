@@ -23,7 +23,9 @@ public class DemoDataInitializer {
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void refreshDemoSession() {
-        repository.findByCode("DEMO2026").ifPresent(this::refresh);
+        repository.findByCode("DEMO2026")
+                .filter(session -> session.getFinAt() == null && session.getClotureAt() == null)
+                .ifPresent(this::refresh);
     }
 
     private void refresh(SessionCours session) {
