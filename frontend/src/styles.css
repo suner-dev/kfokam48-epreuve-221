@@ -1,12 +1,463 @@
+/* ==========================================================================
+   KFOKAM48 — Design system
+   Soutine commune a l'ensemble de l'application : tokens, fond « aurora »,
+   surfaces vitreuses, typographie et moteur d'animations.
+
+   Ce fichier remplace le socle plat d'origine (#f1f5f9 / Arial). Il vit
+   dans les styles globaux car angular.json plafonne `anyComponentStyle` a
+   8 kB en erreur : les styles de composants restent donc minces et
+   consomment uniquement des tokens et des classes utilitaires.
+
+   Regle stricte : ce socle est purement presentiel. Il n'encode aucune
+   regle metier, aucun calcul de moyenne, d'expiration ou de compteurs.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. Polices auto-hebergees
+   Sora pour les titres, Inter pour l'interface, JetBrains Mono pour les
+   codes de presence. Les fichiers woff2 (sous-ensembles latin et
+   latin-ext) sont versionnes dans `public/fonts/` : le build ne depend
+   d'aucun appel reseau et la typographie reste identique hors ligne.
+
+   Ce sont des polices variables : une seule URL couvre toutes les
+   graisses declarees dans la plage `font-weight` ci-dessous.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/sora-var-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/sora-var-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-var-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-var-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-var-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-var-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* --------------------------------------------------------------------------
+   1. Tokens
+   -------------------------------------------------------------------------- */
+:root {
+  /* Teintes */
+  --kf-night-900: #070518;
+  --kf-night-800: #0a0820;
+  --kf-indigo-500: #6366f1;
+  --kf-violet-500: #8b5cf6;
+  --kf-cyan-400: #22d3ee;
+  --kf-jade-400: #34d399;
+  --kf-amber-400: #fbbf24;
+  --kf-ink-050: #f8f9ff;
+  --kf-ink-100: #eceefb;
+  --kf-ink-200: #d5d8f0;
+  --kf-ink-300: #b3b7d4;
+  --kf-ink-400: #8b90b5;
+
+  /* Fond et texte */
+  --kf-bg-base: var(--kf-night-800);
+  --kf-bg-aurora-a: rgba(99, 102, 241, 0.5);
+  --kf-bg-aurora-b: rgba(244, 114, 182, 0.34);
+  --kf-bg-aurora-c: rgba(34, 211, 238, 0.28);
+  --kf-text: var(--kf-ink-100);
+  --kf-text-soft: var(--kf-ink-300);
+  --kf-text-muted: var(--kf-ink-400);
+  --kf-text-strong: #ffffff;
+
+  /* Surfaces vitreuses */
+  --kf-glass-bg: rgba(255, 255, 255, 0.055);
+  --kf-glass-bg-strong: rgba(255, 255, 255, 0.085);
+  --kf-glass-border: rgba(255, 255, 255, 0.14);
+  --kf-glass-border-strong: rgba(255, 255, 255, 0.26);
+  --kf-glass-blur: 22px;
+  --kf-glass-blur-strong: 34px;
+  --kf-glass-saturate: 150%;
+
+  /* Marques d'etat */
+  --kf-accent: var(--kf-violet-500);
+  --kf-accent-soft: rgba(139, 92, 246, 0.16);
+  --kf-success: var(--kf-jade-400);
+  --kf-success-soft: rgba(52, 211, 153, 0.16);
+  --kf-warning: var(--kf-amber-400);
+  --kf-warning-soft: rgba(251, 191, 36, 0.16);
+  --kf-danger: #fb7185;
+  --kf-danger-soft: rgba(251, 113, 133, 0.16);
+  --kf-info: var(--kf-cyan-400);
+  --kf-info-soft: rgba(34, 211, 238, 0.16);
+
+  /* Typographie */
+  --kf-font-display: 'Sora', 'Inter', system-ui, -apple-system, sans-serif;
+  --kf-font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --kf-font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Rayons */
+  --kf-radius-xs: 8px;
+  --kf-radius-sm: 12px;
+  --kf-radius-md: 18px;
+  --kf-radius-lg: 26px;
+  --kf-radius-pill: 999px;
+
+  /* Espacements */
+  --kf-space-1: 4px;
+  --kf-space-2: 8px;
+  --kf-space-3: 12px;
+  --kf-space-4: 16px;
+  --kf-space-5: 24px;
+  --kf-space-6: 32px;
+  --kf-space-7: 48px;
+  --kf-space-8: 64px;
+
+  /* Ombres douces */
+  --kf-shadow-sm: 0 2px 10px rgba(4, 2, 20, 0.3);
+  --kf-shadow-md: 0 14px 38px rgba(4, 2, 20, 0.42);
+  --kf-shadow-lg: 0 28px 70px rgba(4, 2, 20, 0.5);
+  --kf-shadow-glow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 18px 50px rgba(99, 102, 241, 0.24);
+
+  /* Moteur d'animations : une seule courbe douce, des durees nommees */
+  --kf-ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --kf-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --kf-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --kf-dur-1: 140ms;
+  --kf-dur-2: 240ms;
+  --kf-dur-3: 380ms;
+  --kf-dur-4: 620ms;
+  --kf-dur-5: 1200ms;
+  --kf-stagger: 60ms;
+
+  /* Anneau de focus unique, visible au clavier uniquement */
+  --kf-focus-ring: 0 0 0 3px rgba(34, 211, 238, 0.55);
+}
+
+/* --------------------------------------------------------------------------
+   2. Reset
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html {
-  background: #f1f5f9;
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--kf-bg-base);
+  font-family: var(--kf-font-body);
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
 }
 
 body {
   margin: 0;
+  min-height: 100dvh;
+  color: var(--kf-text);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-* {
-  box-sizing: border-box;
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--kf-font-display);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--kf-text-strong);
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--kf-cyan-400);
+  text-decoration-color: rgba(34, 211, 238, 0.4);
+  text-underline-offset: 3px;
+  transition: color var(--kf-dur-1) var(--kf-ease-soft);
+}
+
+a:hover {
+  color: var(--kf-ink-050);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--kf-focus-ring);
+  border-radius: var(--kf-radius-xs);
+}
+
+::selection {
+  background: rgba(139, 92, 246, 0.4);
+  color: #fff;
+}
+
+/* --------------------------------------------------------------------------
+   3. Fond « aurora »
+   Trois nappes de couleur qui respirent tres lentement, derriere tout le
+   contenu. Purement decoratif : masque pour la lectrice d'ecran, coupe pour
+   `prefers-reduced-motion`.
+   -------------------------------------------------------------------------- */
+.kf-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% -20%, rgba(99, 102, 241, 0.34), transparent 60%),
+    linear-gradient(180deg, var(--kf-night-800) 0%, var(--kf-night-900) 100%);
+}
+
+.kf-aurora__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.55;
+  will-change: transform;
+}
+
+.kf-aurora__blob--violet {
+  width: 46vmax;
+  height: 46vmax;
+  top: -14vmax;
+  left: -10vmax;
+  background: radial-gradient(circle, var(--kf-bg-aurora-a), transparent 68%);
+  animation: kf-drift-a 28s var(--kf-ease-inout) infinite alternate;
+}
+
+.kf-aurora__blob--rose {
+  width: 38vmax;
+  height: 38vmax;
+  top: 6vmax;
+  right: -12vmax;
+  background: radial-gradient(circle, var(--kf-bg-aurora-b), transparent 68%);
+  animation: kf-drift-b 34s var(--kf-ease-inout) infinite alternate;
+}
+
+.kf-aurora__blob--cyan {
+  width: 42vmax;
+  height: 42vmax;
+  bottom: -18vmax;
+  left: 24vmax;
+  background: radial-gradient(circle, var(--kf-bg-aurora-c), transparent 68%);
+  animation: kf-drift-c 40s var(--kf-ease-inout) infinite alternate;
+}
+
+/* Grain tres fin : casse la platitude des degrades, invisible a l'echelle */
+.kf-aurora::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.16;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.5) 0.5px, transparent 0.5px);
+  background-size: 3px 3px;
+}
+
+@keyframes kf-drift-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(8vmax, 6vmax, 0) scale(1.14);
+  }
+}
+
+@keyframes kf-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.08);
+  }
+  to {
+    transform: translate3d(-9vmax, 9vmax, 0) scale(0.94);
+  }
+}
+
+@keyframes kf-drift-c {
+  from {
+    transform: translate3d(0, 0, 0) scale(0.96);
+  }
+  to {
+    transform: translate3d(6vmax, -8vmax, 0) scale(1.16);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Classes utilitaires partagees
+   -------------------------------------------------------------------------- */
+
+/* Surface de verre standard, heritee par tous les conteneurs */
+.kf-glass {
+  position: relative;
+  background: var(--kf-glass-bg);
+  border: 1px solid var(--kf-glass-border);
+  border-radius: var(--kf-radius-lg);
+  box-shadow: var(--kf-shadow-md);
+  backdrop-filter: blur(var(--kf-glass-blur)) saturate(var(--kf-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--kf-glass-blur)) saturate(var(--kf-glass-saturate));
+}
+
+.kf-mono {
+  font-family: var(--kf-font-mono);
+  font-variant-ligatures: none;
+  letter-spacing: 0.06em;
+}
+
+.kf-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--kf-text-muted);
+}
+
+.kf-gradient-text {
+  background: linear-gradient(115deg, #fff 0%, var(--kf-ink-200) 45%, var(--kf-cyan-400) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Reveil progressif : chaque enfant decale son entree via --kf-i */
+.kf-rise {
+  animation: kf-rise-in var(--kf-dur-4) var(--kf-ease-soft) both;
+  animation-delay: calc(var(--kf-i, 0) * var(--kf-stagger));
+}
+
+@keyframes kf-rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.kf-fade-in {
+  animation: kf-fade-in var(--kf-dur-3) var(--kf-ease-soft) both;
+}
+
+@keyframes kf-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Pulsation douce des squelettes de chargement */
+.kf-pulse {
+  animation: kf-pulse var(--kf-dur-3) var(--kf-ease-inout) infinite alternate;
+}
+
+@keyframes kf-pulse {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+
+/* Contenu reserve aux lecteurs d'ecran */
+.kf-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   5. Pont de compatibilite
+   Les trois ecrans sont migres vers le design system dans #60, #61 et #62.
+   D'ici la, leurs couleurs d'origine (texte #102a43, cartes blanches) restent
+   declarees dans leurs propres CSS : sans ce pont elles seraient illisibles
+   sur le fond sombre. Chaque bloc disparait a la migration de son ecran.
+   -------------------------------------------------------------------------- */
+app-trainer-page .page,
+app-student-page .page,
+app-reviewer-page .page {
+  color: #1e293b;
+  background: rgba(248, 249, 255, 0.92);
+  border-radius: var(--kf-radius-lg);
+  padding: var(--kf-space-5);
+  box-shadow: var(--kf-shadow-lg);
+}
+
+/* --------------------------------------------------------------------------
+   6. Reduced motion
+   Regle d'accessibilite : plus aucune animation ni transition, les etats
+   finaux restent identiques pour que rien ne devienne illisible.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .kf-aurora__blob {
+    animation: none !important;
+    opacity: 0.4;
+  }
 }
