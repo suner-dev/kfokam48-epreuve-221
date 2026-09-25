@@ -55,6 +55,9 @@ class PresenceServiceTest {
     @Mock
     private EtudiantService etudiantService;
 
+    @Mock
+    private CodeAttemptService codeAttemptService;
+
     @Test
     void marqueLaPresenceALaDerniereSecondeAvantLexpiration() {
         PresenceService service = serviceAt(EXPIRATION.minusSeconds(1));
@@ -80,6 +83,7 @@ class PresenceServiceTest {
 
         assertErreur(() -> service.mark(new MarkPresenceRequest(CODE, ETUDIANT_ID)),
                 HttpStatus.GONE, "CODE_EXPIRE");
+        verify(codeAttemptService).registerFailure(ETUDIANT_ID);
         verifyNoInteractions(repository, exerciseService);
     }
 
@@ -156,7 +160,7 @@ class PresenceServiceTest {
     }
 
     private PresenceService serviceAt(Instant now) {
-        return new PresenceService(repository, exerciseService, sessionService, etudiantService,
+        return new PresenceService(repository, exerciseService, sessionService, etudiantService, codeAttemptService,
                 Clock.fixed(now, ZoneOffset.UTC));
     }
 
