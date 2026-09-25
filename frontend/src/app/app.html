@@ -5,13 +5,60 @@
 </div>
 
 <header class="app-header">
-  <a class="brand" routerLink="/formateur">KFOKAM48</a>
-  <nav aria-label="Parcours de l’application">
-    <a routerLink="/formateur" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Formateur</a>
-    <a routerLink="/etudiant" routerLinkActive="active">Étudiant</a>
-    <a routerLink="/relecteur" routerLinkActive="active">Relecteur</a>
+  <a class="brand" routerLink="/formateur">
+    <span class="brand__mark" aria-hidden="true">K</span>
+    <span class="brand__text">
+      <span class="brand__name kf-gradient-text">KFOKAM48</span>
+      <span class="brand__tagline">Présence &amp; relecture</span>
+    </span>
+  </a>
+
+  <nav
+    #nav
+    class="kf-pillnav app-nav"
+    aria-label="Parcours de l’application"
+    [style]="indicatorStyle()"
+  >
+    <span class="kf-pillnav__indicator" aria-hidden="true"></span>
+    <a
+      class="kf-pillnav__link app-nav__link"
+      routerLink="/formateur"
+      routerLinkActive="is-active"
+      [routerLinkActiveOptions]="{ exact: true }"
+    >
+      <span class="kf-pillnav__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M4 19V5a1 1 0 0 1 1-1h9l5 5v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" />
+          <path d="M14 4v5h5M8 13h7M8 16h4" stroke-linecap="round" />
+        </svg>
+      </span>
+      Formateur
+    </a>
+    <a class="kf-pillnav__link app-nav__link" routerLink="/etudiant" routerLinkActive="is-active">
+      <span class="kf-pillnav__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 4 3 8l9 4 9-4-9-4Z" stroke-linejoin="round" />
+          <path d="M7 10v5c0 1.7 2.2 3 5 3s5-1.3 5-3v-5" stroke-linecap="round" />
+        </svg>
+      </span>
+      Étudiant
+    </a>
+    <a class="kf-pillnav__link app-nav__link" routerLink="/relecteur" routerLinkActive="is-active">
+      <span class="kf-pillnav__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="11" cy="11" r="6" />
+          <path d="m20 20-3.6-3.6" stroke-linecap="round" />
+        </svg>
+      </span>
+      Relecteur
+    </a>
   </nav>
 </header>
-<main>
+
+<main class="app-main">
   <router-outlet />
 </main>
+
+<footer class="app-footer">
+  <p>KFOKAM48 — présence et relecture entre étudiants</p>
+</footer>
