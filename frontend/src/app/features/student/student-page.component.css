@@ -167,3 +167,19 @@ a:focus-visible {
     width: 100%;
   }
 }
+
+.badge-provisoire {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.review-count {
+  color: var(--muted, #666);
+  font-size: 0.9rem;
+}

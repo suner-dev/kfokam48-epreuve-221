@@ -108,7 +108,11 @@
     <div class="section-heading">
       <div>
         <h2 id="received-reviews-title">Mes notes et commentaires reçus</h2>
-        <p>Les résultats ne révèlent jamais l’identité du relecteur.</p>
+        <p>
+          Chaque exercice est relu par deux pairs. La note affichée est la moyenne de leurs notes,
+          calculée par l’API ; tant que les deux n’ont pas rendu, elle reste provisoire. Les
+          résultats ne révèlent jamais l’identité des relecteurs.
+        </p>
       </div>
       <button type="button" class="secondary" (click)="refreshReceivedReviews()" [disabled]="identityForm.controls.etudiantId.invalid">Actualiser</button>
     </div>
@@ -130,7 +134,19 @@
           <article class="review">
             <h3>Exercice #{{ review.exerciceId }} · Session #{{ review.sessionId }}</h3>
             <p><a [href]="review.lienExercice" target="_blank" rel="noopener">Consulter l’exercice</a></p>
-            <p><strong>Note :</strong> {{ review.note }}/20</p>
+            @if (review.note !== null) {
+              <p>
+                <strong>Note :</strong> {{ review.note }}/20
+                @if (review.provisoire) {
+                  <span class="badge-provisoire" [attr.aria-label]="'Note provisoire'">provisoire</span>
+                }
+                <span class="review-count">
+                  — {{ review.nbNotes }} note{{ review.nbNotes > 1 ? 's' : '' }} reçue{{ review.nbNotes > 1 ? 's' : '' }} sur 2
+                </span>
+              </p>
+            } @else {
+              <p><strong>Note :</strong> en attente d’une note.</p>
+            }
             <p><strong>Commentaire :</strong> {{ review.commentaire }}</p>
           </article>
         }
