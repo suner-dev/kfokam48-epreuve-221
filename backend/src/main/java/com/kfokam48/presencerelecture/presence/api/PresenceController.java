@@ -21,4 +21,9 @@ public class PresenceController {
     public ResponseEntity<PresenceResponse> mark(@Valid @RequestBody MarkPresenceRequest request) {
         return ResponseEntity.status(201).body(service.mark(request));
     }
+
+    @PostMapping("/manuelle")
+    public ResponseEntity<PresenceResponse> addManually(@Valid @RequestBody ManualPresenceRequest request) {
+        return ResponseEntity.status(201).body(service.addManually(request));
+    }
 }

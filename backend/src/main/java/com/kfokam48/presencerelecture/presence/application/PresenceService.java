@@ -3,6 +3,7 @@ package com.kfokam48.presencerelecture.presence.application;
 import com.kfokam48.presencerelecture.common.exception.ApiException;
 import com.kfokam48.presencerelecture.etudiant.application.EtudiantService;
 import com.kfokam48.presencerelecture.etudiant.domain.Etudiant;
+import com.kfokam48.presencerelecture.presence.api.ManualPresenceRequest;
 import com.kfokam48.presencerelecture.presence.api.MarkPresenceRequest;
 import com.kfokam48.presencerelecture.presence.api.PresenceResponse;
 import com.kfokam48.presencerelecture.presence.domain.Presence;
@@ -44,6 +45,21 @@ public class PresenceService {
         }
         Presence presence = repository.save(new Presence(
                 session.getId(), etudiant.getId(), SourcePresence.ETUDIANT, clock.instant()
+        ));
+        return new PresenceResponse(presence.getId(), presence.getSessionId(), presence.getEtudiantId(), presence.getSource());
+    }
+
+    public PresenceResponse addManually(ManualPresenceRequest request) {
+        SessionCours session = sessionService.require(request.sessionId());
+        if (session.getClotureAt() != null) {
+            throw new ApiException(HttpStatus.GONE, "SESSION_CLOTUREE", "La session est clôturée.");
+        }
+        Etudiant etudiant = etudiantService.require(request.etudiantId(), session.getPromotionId());
+        if (repository.findBySessionIdAndEtudiantId(session.getId(), etudiant.getId()).isPresent()) {
+            throw new ApiException(HttpStatus.CONFLICT, "DEJA_PRESENT", "La présence est déjà enregistrée pour cette session.");
+        }
+        Presence presence = repository.save(new Presence(
+                session.getId(), etudiant.getId(), SourcePresence.FORMATEUR, clock.instant()
         ));
         return new PresenceResponse(presence.getId(), presence.getSessionId(), presence.getEtudiantId(), presence.getSource());
     }
