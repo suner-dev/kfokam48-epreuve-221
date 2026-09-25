@@ -3,6 +3,7 @@ package com.kfokam48.presencerelecture.presence.application;
 import com.kfokam48.presencerelecture.common.exception.ApiException;
 import com.kfokam48.presencerelecture.etudiant.application.EtudiantService;
 import com.kfokam48.presencerelecture.etudiant.domain.Etudiant;
+import com.kfokam48.presencerelecture.exercice.application.ExerciseService;
 import com.kfokam48.presencerelecture.presence.api.ManualPresenceRequest;
 import com.kfokam48.presencerelecture.presence.api.MarkPresenceRequest;
 import com.kfokam48.presencerelecture.presence.api.PresenceResponse;
@@ -20,17 +21,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class PresenceService {
     private final PresenceRepository repository;
+    private final ExerciseService exerciseService;
     private final SessionService sessionService;
     private final EtudiantService etudiantService;
     private final Clock clock;
 
     public PresenceService(
             PresenceRepository repository,
+            ExerciseService exerciseService,
             SessionService sessionService,
             EtudiantService etudiantService,
             Clock clock
     ) {
         this.repository = repository;
+        this.exerciseService = exerciseService;
         this.sessionService = sessionService;
         this.etudiantService = etudiantService;
         this.clock = clock;
@@ -46,6 +50,7 @@ public class PresenceService {
         Presence presence = repository.save(new Presence(
                 session.getId(), etudiant.getId(), SourcePresence.ETUDIANT, clock.instant()
         ));
+        exerciseService.assignPending(session.getId());
         return new PresenceResponse(presence.getId(), presence.getSessionId(), presence.getEtudiantId(), presence.getSource());
     }
 
@@ -61,6 +66,7 @@ public class PresenceService {
         Presence presence = repository.save(new Presence(
                 session.getId(), etudiant.getId(), SourcePresence.FORMATEUR, clock.instant()
         ));
+        exerciseService.assignPending(session.getId());
         return new PresenceResponse(presence.getId(), presence.getSessionId(), presence.getEtudiantId(), presence.getSource());
     }
 
