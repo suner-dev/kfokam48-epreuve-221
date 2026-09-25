@@ -81,7 +81,7 @@ public class ReviewTaskService {
     private Exercice requireExercise(Relecture review) {
         return exerciceRepository.findById(review.getExerciceId()).orElseThrow(() -> new ApiException(
                 HttpStatus.NOT_FOUND,
-                "EXERCICE_INCONNUE",
+                "EXERCICE_INCONNU",
                 "L'exercice associé n'existe pas."
         ));
     }

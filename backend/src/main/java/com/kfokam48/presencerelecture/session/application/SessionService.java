@@ -37,7 +37,7 @@ public class SessionService {
     }
 
     public CreatedSessionResponse create(CreateSessionRequest request) {
-        promotionService.require(request.promotionId());
+        promotionService.require(request.promotionId(), HttpStatus.BAD_REQUEST);
         Instant ouvertureAt = clock.instant();
         SessionCours session = repository.save(new SessionCours(
                 request.titre(),
@@ -50,8 +50,16 @@ public class SessionService {
     }
 
     public SessionCours require(Long id) {
+        return require(id, HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Même règle que pour la promotion : sur une écriture imposée (POST /api/exercices), le
+     * sessionId provient du corps et le contrat n'y déclare pas de 404, donc 400.
+     */
+    public SessionCours require(Long id, HttpStatus statutAbsence) {
         return repository.findById(id).orElseThrow(() -> new ApiException(
-                HttpStatus.NOT_FOUND,
+                statutAbsence,
                 "SESSION_INCONNUE",
                 "La session demandée n'existe pas."
         ));

@@ -46,7 +46,7 @@ paths:
                   code: { type: string }
                   ouvertureAt: { type: string, format: date-time }
                   expirationAt: { type: string, format: date-time }
-        "400": { $ref: "#/components/responses/Erreur" }
+        "400": { $ref: "#/components/responses/Erreur" }   # CHAMP_MANQUANT · PROMOTION_INCONNUE (le promotionId arrive dans le corps : erreur de requête, le contrat imposé ne déclare que 400 ici)
 
   /api/presences:
     post:
@@ -75,7 +75,7 @@ paths:
                   sessionId: { type: integer, format: int64 }
                   etudiantId: { type: integer, format: int64 }
                   source: { type: string, enum: [ETUDIANT, FORMATEUR] }
-        "400": { $ref: "#/components/responses/Erreur" }   # CODE_INCONNU
+        "400": { $ref: "#/components/responses/Erreur" }   # CODE_INCONNU · CHAMP_MANQUANT · ETUDIANT_INCONNU (hors promotion de la session)
         "409": { $ref: "#/components/responses/Erreur" }   # DEJA_PRESENT
         "410": { $ref: "#/components/responses/Erreur" }   # CODE_EXPIRE / SESSION_TERMINEE / SESSION_CLOTUREE
 
@@ -105,7 +105,7 @@ paths:
                 properties:
                   id: { type: integer, format: int64 }
                   statut: { type: string }
-        "400": { $ref: "#/components/responses/Erreur" }   # LIEN_INVALIDE
+        "400": { $ref: "#/components/responses/Erreur" }   # LIEN_INVALIDE · CHAMP_MANQUANT · ETUDIANT_INCONNU · SESSION_INCONNUE (identifiants du corps : erreur de requête, pas de 404 ajouté sur une opération imposée)
         "409": { $ref: "#/components/responses/Erreur" }   # EXERCICE_DEJA_DEPOSE
         "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
 
@@ -132,8 +132,8 @@ paths:
         "200": { description: Relecture enregistrée }
         "400": { $ref: "#/components/responses/Erreur" }   # NOTE_INVALIDE
         "403": { $ref: "#/components/responses/Erreur" }   # AUTO_RELECTURE
-        "404": { $ref: "#/components/responses/Erreur" }   # RELECTURE_INCONNUE
-        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_RENDUE
+        "404": { $ref: "#/components/responses/Erreur" }   # RELECTURE_INCONNUE · EXERCICE_INCONNU · SESSION_INCONNUE
+        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_RENDUE · RELECTURE_NON_ASSIGNEE
         "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
     put:
       summary: "Q10 / RG9 — Correction d'une relecture tant que la session n'est pas clôturée (honore Q10 sans toucher au POST imposé)"
@@ -405,7 +405,7 @@ paths:
                   sessionId: { type: integer, format: int64 }
                   etudiantId: { type: integer, format: int64 }
                   source: { type: string, enum: [FORMATEUR] }
-        "400": { $ref: "#/components/responses/Erreur" }   # CHAMP_MANQUANT
+        "400": { $ref: "#/components/responses/Erreur" }   # CHAMP_MANQUANT · ETUDIANT_INCONNU
         "404": { $ref: "#/components/responses/Erreur" }   # SESSION_INCONNUE
         "409": { $ref: "#/components/responses/Erreur" }   # DEJA_PRESENT
         "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
@@ -428,8 +428,8 @@ paths:
                   id: { type: integer, format: int64 }
                   commenceeAt: { type: string, format: date-time }
         "403": { $ref: "#/components/responses/Erreur" }   # AUTO_RELECTURE
-        "404": { $ref: "#/components/responses/Erreur" }   # RELECTURE_INCONNUE
-        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_COMMENCEE
+        "404": { $ref: "#/components/responses/Erreur" }   # RELECTURE_INCONNUE · EXERCICE_INCONNU · SESSION_INCONNUE
+        "409": { $ref: "#/components/responses/Erreur" }   # RELECTURE_DEJA_COMMENCEE · RELECTURE_NON_ASSIGNEE
         "410": { $ref: "#/components/responses/Erreur" }   # SESSION_CLOTUREE
 
   /api/exercices/{id}:
@@ -537,7 +537,37 @@ components:
       properties:
         code:
           type: string
-          description: Identifiant stable, en majuscules. Exemple - CODE_EXPIRE
+          description: |
+            Identifiant stable, en majuscules. Seuls les codes énumérés ci-dessous peuvent être
+            renvoyés ; aucun code non listé n'est autorisé (règle « ne pas inventer un code »).
+
+            Codes métier (portée indiquée) :
+            SESSION_INCONNUE (404) · CODE_INCONNU (400) · CODE_EXPIRE (410) · DEJA_PRESENT (409)
+            SESSION_TERMINEE (410) · SESSION_CLOTUREE (410) · SESSION_DEJA_TERMINEE (409)
+            SESSION_DEJA_CLOTUREE (409) · LIEN_INVALIDE (400) · EXERCICE_DEJA_DEPOSE (409)
+            EXERCICE_INCONNU (404) · NOTE_INVALIDE (400) · AUTO_RELECTURE (403)
+            RELECTURE_DEJA_RENDUE (409) · RELECTURE_INCONNUE (404) · RELECTURE_NON_ASSIGNEE (409,
+            affectation sans relecteur — cas H3)
+            RELECTURE_DEJA_COMMENCEE (409, POST /debut : le démarrage a déjà été demandé)
+            RELECTURE_COMMENCEE (409, PUT /api/exercices/{id} : lien remplaçable seulement tant que
+            la relecture n'a pas commencé — RG12 ; distinct du précédent, même cause, autre opération)
+            ETUDIANT_INCONNU (400 sur les écritures — `POST /api/presences`, `POST /api/exercices`,
+            `POST /api/presences/manuelle` — car l'identifiant fait partie du corps de la requête ;
+            404 sur les lectures qui ciblent un étudiant — `a-faire`, `relectures-recues` —) ·
+            PROMOTION_INCONNUE (400 sur `POST /api/sessions`, 404 sur les lectures
+            `GET /api/tableau`, `GET /api/etudiants`) ·
+            SESSION_INCONNUE (400 sur `POST /api/exercices`, 404 ailleurs) ·
+            CHAMP_MANQUANT (400, tout champ
+            requis absent ou invalide, y compris les validations de requête)
+
+            Codes techniques émis par le conseil d'erreur centralisé, pour toute route JSON :
+            REQUETE_INVALIDE (400, corps JSON illisible, paramètre de requête absent ou convertible
+            en un autre type) · RESOURCE_INTROUVABLE (404, aucune route déclarée ne correspond)
+            METHODE_NON_AUTORISEE (405, route déclarée mais verbe HTTP non supporté)
+            CONFLIT_CONCURRENCE (409, contrainte d'unicité SQL violée entre le contrôle et l'écriture)
+            ERREUR_INTERNE (500, exception inattendue ; le message reste générique, jamais une
+            stack trace ni un nom de classe)
+          example: CODE_EXPIRE
         message:
           type: string
           description: Phrase lisible par un humain, en français
@@ -547,6 +577,10 @@ components:
         Format d'erreur imposé pour TOUTES les erreurs, sans exception.
         Une stack trace, un corps vide ou la page d'erreur par défaut de Spring
         valent zéro sur ce critère.
+        Les statuts listés par opération sont les statuts attendus ; ils n'excluent pas les
+        réponses techniques globales (400 REQUETE_INVALIDE, 404 RESOURCE_INTROUVABLE,
+        405 METHODE_NON_AUTORISEE, 409 CONFLIT_CONCURRENCE, 500 ERREUR_INTERNE), qui respectent
+        exactement le même corps `{code,message}`.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Erreur" }
