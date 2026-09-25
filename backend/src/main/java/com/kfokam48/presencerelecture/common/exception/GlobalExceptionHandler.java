@@ -43,8 +43,12 @@ public class GlobalExceptionHandler {
         MissingServletRequestParameterException.class
     })
     public ResponseEntity<ApiErrorResponse> handleBadRequest(Exception exception) {
-        return ResponseEntity.badRequest()
-                .body(new ApiErrorResponse("REQUETE_INVALIDE", "La requête est invalide."));
+        boolean hasNote = exception.getMessage() != null && exception.getMessage().contains("note");
+        String code = hasNote ? "NOTE_INVALIDE" : "REQUETE_INVALIDE";
+        String message = hasNote
+                ? "La note doit être un entier compris entre 0 et 20."
+                : "La requête est invalide.";
+        return ResponseEntity.badRequest().body(new ApiErrorResponse(code, message));
     }
 
     @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
