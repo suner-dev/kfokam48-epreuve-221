@@ -1,6 +1,7 @@
 package com.kfokam48.presencerelecture;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -42,14 +43,13 @@ class DashboardControllerIT {
         render(reviewId, 15, "Premier");
         createExercise(session.id(), 2L, "https://example.test/exercice/tableau-pending");
 
+        JsonNode after = dashboard();
         mockMvc.perform(get("/api/tableau").param("promotionId", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].etudiantId").value(1))
-                .andExpect(jsonPath("$[0].presences").value(reviewerPresencesBefore + 1))
-                .andExpect(jsonPath("$[0].relecturesEnAttente").value(reviewerPendingBefore + 1))
-                .andExpect(jsonPath("$[2].etudiantId").value(3))
-                .andExpect(jsonPath("$[2].exercicesDeposes").value(authorExercisesBefore + 1))
-                .andExpect(jsonPath("$[2].moyenne").value(15.0));
+                .andExpect(status().isOk());
+        assertThat(row(after, 1L).get("presences").asLong()).isEqualTo(reviewerPresencesBefore + 1);
+        assertThat(row(after, 1L).get("relecturesEnAttente").asLong()).isEqualTo(reviewerPendingBefore + 1);
+        assertThat(row(after, 3L).get("exercicesDeposes").asLong()).isEqualTo(authorExercisesBefore + 1);
+        assertThat(row(after, 3L).get("moyenne").asDouble()).isEqualTo(15.0);
     }
 
     @Test
