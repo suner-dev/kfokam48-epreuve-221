@@ -10,6 +10,10 @@ info:
     de session, ajout manuel de présence, démarrage et correction d'une relecture,
     remplacement du lien, consultation des résultats et détails de tableau.
     Figé AVANT le premier commit de code (exigence « contrat complété et figé »).
+    Révision 2.0 — après l'enveloppe de l'étape 3 : deux affectations de relecture par
+    exercice au lieu d'une, note retenue = moyenne des notes rendues, mention provisoire
+    tant que les deux pairs n'ont pas rendu. Les cinq opérations IMPOSÉES sont inchangées ;
+    seules les réponses de deux opérations LIBRES ont évolué.
     Auteur : Ngansop Sumo Rainer · 221.
 servers:
   - url: http://localhost:8080
@@ -344,7 +348,7 @@ paths:
 
   /api/sessions/{id}/exercices:
     get:
-      summary: "Exercices d'une session et état de leur relecture, pour rendre Q11 visible au formateur"
+      summary: "Exercices d'une session et état de chacune de leurs affectations de relecture (enveloppe étape 3 : jusqu'à deux)"
       tags: [Exercices]
       parameters:
         - $ref: "#/components/parameters/IdPath"
@@ -468,7 +472,7 @@ paths:
 
   /api/etudiants/{etudiantId}/relectures-recues:
     get:
-      summary: "Résultats reçus par l'auteur, sans identité du relecteur (Q8)"
+      summary: "Note retenue par exercice (moyenne des deux pairs), sans identité des relecteurs — enveloppe étape 3, EF17/RG20"
       tags: [Relectures]
       parameters:
         - name: etudiantId
