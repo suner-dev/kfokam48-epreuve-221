@@ -19,8 +19,13 @@
 |---|---|
 | URL du dépôt public | `https://github.com/suner-dev/kfokam48-epreuve-221` |
 | Branche | `main` |
-| Hash du dernier commit (40 caractères) | `f25f4b5bcfbd0a137d2f3ad025c522d01a08cfb5` |
-| Dernier commit | `[JALON] v1.0` |
+| Hash du jalon `[JALON] v1.0` (40 caractères) | `f25f4b5bcfbd0a137d2f3ad025c522d01a08cfb5` |
+| Contenu exact de ce jalon | version finale : `CHANGELOG.md`, journal des étapes 3, 4 et 6, backlog trié |
+| Commit au-dessus du jalon | un seul, purement documentaire : l'ajout de ce `SOUMISSION.md`. Il ne touche ni au code, ni au contrat, ni aux tests, et ne modifie pas le jalon. |
+
+> Le hash déclaré est celui du jalon et non celui de `HEAD` : déclarer un hash de `HEAD` depuis un
+> fichier versionné est impossible sans boucler sur soi-même, puisque l'ajouter crée un nouveau
+> commit. Le hash du jalon est, lui, stable et vérifiable indéfiniment.
 
 ## Épreuve Git (étape 5)
 
@@ -71,7 +76,7 @@ donc pas de hash à déclarer. L'étape 5 ne compte pas dans le barème.
 ## Checklist avant téléversement
 
 - [x] Dépôt public, ouvert et testé en navigation privée
-- [x] Hash de 40 caractères existant sur GitHub et relu **après** le dernier push
+- [x] Hash de 40 caractères du jalon `[JALON] v1.0` existant sur `origin/main` et relu **après** le push du jalon
 - [x] `git status` propre, tout est poussé
 - [x] `README` testé depuis un dossier vide, sans `.env` préalable
 - [x] `JOURNAL.md` et `CAHIER_DES_CHARGES.md` présents dans `docs/`
