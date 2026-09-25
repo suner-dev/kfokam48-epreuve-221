@@ -1,0 +1,46 @@
+# ===== Java / Maven (backend) =====
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+dependency-reduced-pom.xml
+*.class
+*.jar
+*.war
+# ... SAUF le wrapper mvnw qui doit être commité (contrainte B1)
+
+# ===== Node / Angular (frontend) =====
+node_modules/
+dist/
+tmp/
+out-tsc/
+.angular/
+coverage/
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Secrets / env (malus −5 si un secret est commité) =====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+application-local.yml
+application-secret*
+
+# ===== Base de données locale (H2 fichier éventuel) =====
+*.db
+*.mv.db
+*.trace.db
