@@ -40,7 +40,7 @@ public class ReceivedReviewService {
     private ReceivedReviewResponse toResponse(Relecture review) {
         var exercise = exerciceRepository.findById(review.getExerciceId()).orElseThrow(() -> new ApiException(
                 HttpStatus.NOT_FOUND,
-                "EXERCICE_INCONNUE",
+                "EXERCICE_INCONNU",
                 "L'exercice associé n'existe pas."
         ));
         return new ReceivedReviewResponse(
