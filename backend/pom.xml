@@ -59,6 +59,17 @@
 
     <build>
         <plugins>
+            <!--
+              Sans ce plugin, `package` ne produit qu'une jar de classes (~84 Ko) sans
+              `Main-Class` : le `java -jar` du Dockerfile echoue (`no main manifest
+              attribute`) et le demarrage docker tel que documente ne sert aucune requete.
+              La version heritee du parent Spring Boot configure aussi l'exclusion des
+              dependances `test`, donc H2 ne part pas dans l'image de demonstration.
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>

@@ -6,26 +6,29 @@ Application de présence et de relecture entre étudiants, avec backend Spring B
 
 Pré-requis : Docker Compose, Java 17+ et Node.js compatible avec Angular 22.
 
-1. Créer le fichier local sans secret commité :
-
-   ```bash
-   printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -hex 16)" > .env
-   printf 'POSTGRES_USER=kfokam48\nPOSTGRES_DATABASE=kfokam48\n' >> .env
-   ```
-
-2. Démarrer PostgreSQL 16 et le backend :
+1. Démarrer PostgreSQL 16 et le backend :
 
    ```bash
    docker compose up -d --build
    ```
 
-3. Démarrer le frontend :
+   Aucun fichier `.env` n'est nécessaire : les valeurs par défaut sont des valeurs de
+   démonstration (voir [Configuration](#configuration)).
+
+2. Démarrer le frontend :
 
    ```bash
    cd frontend && npm ci && npm start
    ```
 
 Le backend répond sur `http://localhost:8080`. Le frontend Angular répond sur `http://localhost:4200` et utilise le proxy configuré dans `frontend/proxy.conf.json`.
+
+Vérification du démarrage avant d'ouvrir un écran :
+
+```bash
+curl -s http://localhost:8080/api/promotions
+# 200, [{"id":1,"nom":"Promotion Démo KFOKAM48"}]
+```
 
 ## Tests et build
 
@@ -38,14 +41,26 @@ Angular est choisi pour ses trois écrans, ses services dédiés, ses formulaire
 
 ## Configuration
 
-Les variables suivantes sont lues par Docker Compose et le backend :
+La configuration est séparée en trois fichiers, comme l'exige la consigne 2.2 ; les
+migrations Flyway sont compatibles avec PostgreSQL et H2 :
 
-- `POSTGRES_USER` : utilisateur PostgreSQL, valeur locale documentée `kfokam48` ;
-- `POSTGRES_DATABASE` : base PostgreSQL, valeur locale documentée `kfokam48` ;
-- `POSTGRES_PASSWORD` : mot de passe local, obligatoire et jamais commité ;
-- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` : variables équivalentes pour le backend exécuté hors Compose.
+| Fichier | Profil | Base | Usage |
+|---|---|---|---|
+| `application.yml` | *(aucun)* | `jdbc:postgresql://localhost:5432/kfokam48` | valeurs par défaut sans secret, lancement hors conteneur |
+| `application-docker.yml` | `docker` | `jdbc:postgresql://postgres:5432/kfokam48` | service `backend` de `docker-compose.yml` |
+| `application-test.yml` | `test` | H2 en mémoire, mode PostgreSQL | **tous** les tests automatisés, aucune base locale requise |
 
-Le fichier `.env` est ignoré par Git. `.env.example` ne contient aucun mot de passe.
+Le conteneur démarre avec `SPRING_PROFILES_ACTIVE=docker`. Les variables lues :
+
+- `POSTGRES_USER`, `POSTGRES_DATABASE`, `POSTGRES_PASSWORD` : utilisées par Docker Compose,
+  valeur de démonstration `kfokam48` pour chacune ;
+- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB_POOL_SIZE` : les mêmes côté backend, pour que
+  le conteneur comme un processus local se configurent sans modifier aucun fichier.
+
+Aucune de ces valeurs n'est un secret réel. Le fichier `.env`, s'il existe, est ignoré par
+Git ; `.env.example` documente les mêmes valeurs de démonstration et reste optionnel.
+Le schéma est porté par Flyway et `spring.jpa.hibernate.ddl-auto=validate` : l'application
+refuse de démarrer si le schéma et les entités divergent, elle ne modifie jamais la base elle-même.
 
 ## Données de démonstration
 

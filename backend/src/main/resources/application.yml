@@ -1,3 +1,9 @@
+# Consignes 2.2 et 6.1 — separation de la configuration en trois fichiers :
+#   application.yml          : valeurs par defaut sans secret (ce fichier)
+#   application-docker.yml   : PostgreSQL du reseau `docker-compose` (profil `docker`)
+#   application-test.yml     : H2 en memoire, seul profil utilise par les tests
+# Aucun profil ne declare H2 en production et aucun test n'ouvre PostgreSQL.
+
 server:
   port: 8080
   error:
@@ -30,9 +36,3 @@ spring:
     serialization:
       write-dates-as-timestamps: false
     default-property-inclusion: always
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
