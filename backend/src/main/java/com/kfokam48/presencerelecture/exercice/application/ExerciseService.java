@@ -6,6 +6,7 @@ import com.kfokam48.presencerelecture.etudiant.domain.Etudiant;
 import com.kfokam48.presencerelecture.exercice.api.CreateExerciseRequest;
 import com.kfokam48.presencerelecture.exercice.api.ExerciseCreatedResponse;
 import com.kfokam48.presencerelecture.exercice.api.ExerciseDetailResponse;
+import com.kfokam48.presencerelecture.exercice.api.ReplaceExerciseRequest;
 import com.kfokam48.presencerelecture.exercice.domain.Exercice;
 import com.kfokam48.presencerelecture.exercice.domain.ExerciceRepository;
 import com.kfokam48.presencerelecture.exercice.domain.StatutExercice;
@@ -67,6 +68,25 @@ public class ExerciseService {
                 session.getId(), author.getId(), request.lien(), statut, clock.instant()
         ));
         relectureRepository.save(new Relecture(exercise.getId(), reviewerId));
+        return new ExerciseCreatedResponse(exercise.getId(), exercise.getStatut());
+    }
+
+    public ExerciseCreatedResponse replace(Long id, ReplaceExerciseRequest request) {
+        validateUri(request.lien());
+        Exercice exercise = exerciceRepository.findById(id).orElseThrow(() -> new ApiException(
+                HttpStatus.NOT_FOUND,
+                "EXERCICE_INCONNU",
+                "L'exercice demandé n'existe pas."
+        ));
+        SessionCours session = sessionService.require(exercise.getSessionId());
+        if (session.getClotureAt() != null) {
+            throw new ApiException(HttpStatus.GONE, "SESSION_CLOTUREE", "La session est clôturée.");
+        }
+        Relecture review = relectureRepository.findByExerciceId(id).orElse(null);
+        if (review != null && review.getCommenceeAt() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "RELECTURE_COMMENCEE", "La relecture a commencé.");
+        }
+        exercise.replaceLien(request.lien());
         return new ExerciseCreatedResponse(exercise.getId(), exercise.getStatut());
     }
 

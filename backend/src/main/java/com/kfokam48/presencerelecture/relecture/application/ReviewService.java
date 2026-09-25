@@ -71,6 +71,35 @@ public class ReviewService {
         return new ReviewResponse(review.getId(), review.getNote(), review.getCommentaire(), review.getRendueAt());
     }
 
+    public ReviewResponse correct(Long id, SubmitReviewRequest request) {
+        int note = validateNote(request.note());
+        Relecture review = relectureRepository.findById(id).orElseThrow(() -> new ApiException(
+                HttpStatus.NOT_FOUND,
+                "RELECTURE_INCONNUE",
+                "La relecture demandée n'existe pas."
+        ));
+        Exercice exercise = exerciceRepository.findById(review.getExerciceId()).orElseThrow(() -> new ApiException(
+                HttpStatus.NOT_FOUND,
+                "EXERCICE_INCONNU",
+                "L'exercice associé n'existe pas."
+        ));
+        SessionCours session = sessionService.require(exercise.getSessionId());
+        if (session.getClotureAt() != null) {
+            throw new ApiException(HttpStatus.GONE, "SESSION_CLOTUREE", "La session est clôturée.");
+        }
+        if (review.getRelecteurId() == null) {
+            throw new ApiException(HttpStatus.CONFLICT, "RELECTURE_NON_ASSIGNEE", "La relecture n'a pas de relecteur.");
+        }
+        if (review.getRelecteurId().equals(exercise.getEtudiantId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "AUTO_RELECTURE", "Un étudiant ne peut pas relire son propre exercice.");
+        }
+        if (review.getRendueAt() == null || exercise.getStatut() != StatutExercice.RELU) {
+            throw new ApiException(HttpStatus.CONFLICT, "RELECTURE_NON_RENDUE", "La relecture n'a pas encore été rendue.");
+        }
+        review.render(note, request.commentaire(), clock.instant());
+        return new ReviewResponse(review.getId(), review.getNote(), review.getCommentaire(), review.getRendueAt());
+    }
+
     private int validateNote(BigDecimal note) {
         if (note == null
                 || note.compareTo(BigDecimal.ZERO) < 0

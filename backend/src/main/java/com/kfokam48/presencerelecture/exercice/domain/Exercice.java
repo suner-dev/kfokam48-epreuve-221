@@ -58,6 +58,10 @@ public class Exercice {
         return deposeAt;
     }
 
+    public void replaceLien(String lien) {
+        this.lien = lien;
+    }
+
     public void setStatut(StatutExercice statut) {
         this.statut = statut;
     }
