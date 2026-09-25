@@ -1,6 +1,7 @@
 package com.kfokam48.presencerelecture.session.application;
 
 import com.kfokam48.presencerelecture.common.exception.ApiException;
+import com.kfokam48.presencerelecture.exercice.domain.ExerciceRepository;
 import com.kfokam48.presencerelecture.promotion.application.PromotionService;
 import com.kfokam48.presencerelecture.session.api.CloseSessionResponse;
 import com.kfokam48.presencerelecture.session.api.CreateSessionRequest;
@@ -22,16 +23,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class SessionService {
     private static final char[] ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".toCharArray();
     private final SessionCoursRepository repository;
+    private final ExerciceRepository exerciceRepository;
     private final PromotionService promotionService;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
     public SessionService(
             SessionCoursRepository repository,
+            ExerciceRepository exerciceRepository,
             PromotionService promotionService,
             Clock clock
     ) {
         this.repository = repository;
+        this.exerciceRepository = exerciceRepository;
         this.promotionService = promotionService;
         this.clock = clock;
     }
@@ -93,6 +97,8 @@ public class SessionService {
         }
         Instant now = clock.instant();
         session.close(now, now);
+        exerciceRepository.findBySessionIdOrderById(id)
+                .forEach(exercice -> exercice.lockForCloture());
         return new CloseSessionResponse(session.getId(), session.getFinAt(), session.getClotureAt());
     }
 

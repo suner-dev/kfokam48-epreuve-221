@@ -51,6 +51,52 @@ describe('TrainerPageComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('La promotion demandée est inconnue.');
   });
 
+  it('distingue visuellement les six statuts du cycle D4', { timeout: 30000 }, async () => {
+    const fixture = await createComponent(() => of([]));
+    const component = fixture.componentInstance;
+    component.currentSession.set({
+      id: 9,
+      titre: 'Session D4',
+      code: 'ABCDEFGH',
+      promotionId: 4,
+      ouvertureAt: '2026-09-25T08:00:00Z',
+      expirationAt: '2026-09-25T08:15:00Z',
+      finAt: null,
+      clotureAt: null,
+    });
+    component.exercises.set([
+      { id: 1, etudiantId: 1, statut: 'DEPOSE', relecteurId: null, commenceeAt: null, rendueAt: null },
+      { id: 2, etudiantId: 2, statut: 'EN_ATTENTE_DE_RELECTURE', relecteurId: 3, commenceeAt: null, rendueAt: null },
+      { id: 3, etudiantId: 3, statut: 'EN_ATTENTE_SANS_RELECTEUR', relecteurId: null, commenceeAt: null, rendueAt: null },
+      { id: 4, etudiantId: 4, statut: 'RELU', relecteurId: 5, commenceeAt: '2026-09-25T08:01:00Z', rendueAt: '2026-09-25T08:02:00Z' },
+      { id: 5, etudiantId: 5, statut: 'EN_ATTENTE_VERROUILLE', relecteurId: 6, commenceeAt: null, rendueAt: null },
+      { id: 6, etudiantId: 6, statut: 'RELU_VERROUILLE', relecteurId: 7, commenceeAt: '2026-09-25T08:01:00Z', rendueAt: '2026-09-25T08:02:00Z' },
+    ]);
+    component.exercisesStatus.set('success');
+
+    fixture.detectChanges();
+
+    const badges = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('[data-status]'),
+    );
+    expect(badges.map((badge) => badge.dataset['status'])).toEqual([
+      'DEPOSE',
+      'EN_ATTENTE_DE_RELECTURE',
+      'EN_ATTENTE_SANS_RELECTEUR',
+      'RELU',
+      'EN_ATTENTE_VERROUILLE',
+      'RELU_VERROUILLE',
+    ]);
+    expect(badges.map((badge) => badge.className)).toEqual([
+      'status-badge status-depose',
+      'status-badge status-attente-relecture',
+      'status-badge status-attente-sans-relecteur',
+      'status-badge status-relu',
+      'status-badge status-attente-verrouillee',
+      'status-badge status-relu-verrouillee',
+    ]);
+  });
+
   it('affiche les promotions après un chargement réussi', async () => {
     const fixture = await createComponent(() => of([{ id: 4, nom: 'KFOKAM48-2026' }]));
 
