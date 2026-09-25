@@ -12,6 +12,7 @@ import com.kfokam48.presencerelecture.session.application.SessionService;
 import com.kfokam48.presencerelecture.session.domain.SessionCours;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,7 +62,11 @@ public class ReviewService {
         if (review.getRendueAt() != null) {
             throw new ApiException(HttpStatus.CONFLICT, "RELECTURE_DEJA_RENDUE", "La relecture a déjà été rendue.");
         }
-        review.render(note, request.commentaire(), clock.instant());
+        Instant maintenant = clock.instant();
+        if (review.getCommenceeAt() == null) {
+            review.start(maintenant);
+        }
+        review.render(note, request.commentaire(), maintenant);
         exercise.setStatut(StatutExercice.RELU);
         return new ReviewResponse(review.getId(), review.getNote(), review.getCommentaire(), review.getRendueAt());
     }
