@@ -19,4 +19,27 @@ public interface RelectureRepository extends JpaRepository<Relecture, Long> {
             order by review.rendueAt desc
             """)
     List<Relecture> findRenderedForAuthor(@Param("etudiantId") Long etudiantId);
+
+    @Query("""
+            select review.relecteurId, count(review)
+            from Relecture review, Exercice exercise, SessionCours session
+            where review.exerciceId = exercise.id
+              and exercise.sessionId = session.id
+              and session.promotionId = :promotionId
+              and review.relecteurId is not null
+              and review.rendueAt is null
+            group by review.relecteurId
+            """)
+    List<Object[]> countPendingByPromotion(@Param("promotionId") Long promotionId);
+
+    @Query("""
+            select exercise.etudiantId, avg(review.note)
+            from Relecture review, Exercice exercise, SessionCours session
+            where review.exerciceId = exercise.id
+              and exercise.sessionId = session.id
+              and session.promotionId = :promotionId
+              and review.rendueAt is not null
+            group by exercise.etudiantId
+            """)
+    List<Object[]> averageByPromotion(@Param("promotionId") Long promotionId);
 }
