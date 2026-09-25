@@ -1,5 +1,7 @@
 package com.kfokam48.presencerelecture;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -33,6 +35,38 @@ class ReviewControllerIT {
 
     @Autowired
     private RelectureRepository relectureRepository;
+
+    @Test
+    void listeLesRelecturesSansAuteurEtDemarreLaRelecture() throws Exception {
+        SessionInfo session = createSession("Ecran relecteur");
+        markPresence(session, 2L);
+        long reviewId = createReview(session.id(), "https://example.test/exercice/relecteur");
+
+        String taskPath = "$[?(@.relectureId == " + reviewId + ")]";
+        mockMvc.perform(get("/api/relectures/a-faire").param("etudiantId", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(taskPath + ".relectureId").value(hasItem((int) reviewId)))
+                .andExpect(jsonPath(taskPath + ".exerciceId").isNotEmpty())
+                .andExpect(jsonPath(taskPath + ".lienExercice").value(hasItem("https://example.test/exercice/relecteur")))
+                .andExpect(jsonPath(taskPath + ".commenceeAt").value(hasItem(nullValue())))
+                .andExpect(jsonPath(taskPath + ".etudiantId").doesNotExist());
+
+        mockMvc.perform(post("/api/relectures/{id}/debut", reviewId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(reviewId))
+                .andExpect(jsonPath("$.commenceeAt").isString());
+
+        mockMvc.perform(post("/api/relectures/{id}/debut", reviewId))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("RELECTURE_DEJA_COMMENCEE"));
+    }
+
+    @Test
+    void refuseUnEtudiantInconnuPourLaListe() throws Exception {
+        mockMvc.perform(get("/api/relectures/a-faire").param("etudiantId", "999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ETUDIANT_INCONNU"));
+    }
 
     @Test
     void rendUneNoteEtChangeLeStatut() throws Exception {
