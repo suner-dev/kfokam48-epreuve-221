@@ -2,11 +2,12 @@ package com.kfokam48.presencerelecture.relecture.application;
 
 import com.kfokam48.presencerelecture.common.exception.ApiException;
 import com.kfokam48.presencerelecture.etudiant.domain.EtudiantRepository;
-import com.kfokam48.presencerelecture.exercice.domain.ExerciceRepository;
 import com.kfokam48.presencerelecture.relecture.api.ReceivedReviewResponse;
+import com.kfokam48.presencerelecture.exercice.domain.Exercice;
 import com.kfokam48.presencerelecture.relecture.domain.Relecture;
 import com.kfokam48.presencerelecture.relecture.domain.RelectureRepository;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,16 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ReceivedReviewService {
     private final RelectureRepository relectureRepository;
-    private final ExerciceRepository exerciceRepository;
     private final EtudiantRepository etudiantRepository;
 
     public ReceivedReviewService(
             RelectureRepository relectureRepository,
-            ExerciceRepository exerciceRepository,
             EtudiantRepository etudiantRepository
     ) {
         this.relectureRepository = relectureRepository;
-        this.exerciceRepository = exerciceRepository;
         this.etudiantRepository = etudiantRepository;
     }
 
@@ -32,19 +30,30 @@ public class ReceivedReviewService {
         if (!etudiantRepository.existsById(authorId)) {
             throw new ApiException(HttpStatus.NOT_FOUND, "ETUDIANT_INCONNU", "L'étudiant demandé n'existe pas.");
         }
-        return relectureRepository.findRenderedForAuthor(authorId).stream()
+        return relectureRepository.findReviewedExercisesForAuthor(authorId).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    private ReceivedReviewResponse toResponse(Relecture review) {
-        var exercise = exerciceRepository.findById(review.getExerciceId()).orElseThrow(() -> new ApiException(
-                HttpStatus.NOT_FOUND,
-                "EXERCICE_INCONNU",
-                "L'exercice associé n'existe pas."
-        ));
+    /**
+     * Une entrée par exercice, jamais par affectation : deux relectures sur le même exercice
+     * donnent une seule note retenue, celle que l'auteur lit (EF17).
+     */
+    private ReceivedReviewResponse toResponse(Exercice exercise) {
+        List<Relecture> rendues = relectureRepository.findRenderedByExercise(exercise.getId());
+        ReviewSummary resume = ReviewSummary.of(rendues.stream().map(Relecture::getNote).toList());
+        String commentaires = rendues.stream()
+                .map(Relecture::getCommentaire)
+                .filter(commentaire -> commentaire != null && !commentaire.isBlank())
+                .collect(Collectors.joining(" — "));
         return new ReceivedReviewResponse(
-                exercise.getId(), exercise.getSessionId(), exercise.getLien(), review.getNote(), review.getCommentaire()
+                exercise.getId(),
+                exercise.getSessionId(),
+                exercise.getLien(),
+                resume.moyenne(),
+                commentaires,
+                resume.nombreDeNotes(),
+                resume.provisoire()
         );
     }
 }
